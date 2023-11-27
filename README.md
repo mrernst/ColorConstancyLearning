@@ -1,7 +1,7 @@
 # Towards Self-Supervised Learning of Color Constancy
 
 <p align="center">
-  <img src="https://github.com/mrernst/colorconstancylearning/blob/main/img/header.png" width="500">
+  <img src="https://github.com/mrernst/ColorConstancyLearning/blob/main/img/header.png" width="500">
 
 
 This is the codebase used for the ICDL publication "Towards Self-Supervised Learning of Color Constancy" [1]. If you make use of this code please cite as follows:
