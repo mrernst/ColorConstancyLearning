@@ -1,4 +1,9 @@
 # Towards Self-Supervised Learning of Color Constancy
+
+<p align="center">
+  <img src="https://github.com/mrernst/colorconstancylearning/blob/main/img/header.png" width="500">
+
+
 This is the codebase used for the ICDL publication "Towards Self-Supervised Learning of Color Constancy" [1]. If you make use of this code please cite as follows:
 
 [1] M. R. Ernst, F. M. López, R. W. Fleming, A. Aubret and J. Triesch, Towards Self-Supervised Learning of Color Constancy, In Proceedings of the International Conference on Development and Learning. ICDL 2024 (pp. XXX-XXX). IEEE. The paper can found at [arxiv](https://arxiv.org/).
