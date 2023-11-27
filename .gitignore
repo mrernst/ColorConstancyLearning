@@ -154,4 +154,3 @@ run_on_cluster.sbatch
 # plot script for specific experiments
 main/draw_results.py
 *.pdf
-*.png
