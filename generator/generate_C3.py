@@ -14,7 +14,7 @@ def main(args):
 	cube_rgb_colors = []
 	#cube_hsv_colors = [(i * (360 / (args.n_cubes//2)), 100, 50) for i in range(args.n_cubes//2)] + \
 	#	[(i * (360 / (args.n_cubes//2)), 50, 100) for i in range(args.n_cubes//2)]
-	cube_hsv_colors = [(i * (360 / (args.n_cubes)), 50, 100) for i in range(args.n_cubes//2)]
+	cube_hsv_colors = [(i * (360 / (args.n_cubes)), 50, 100) for i in range(args.n_cubes)]
 	
 	for color in cube_hsv_colors:
 		# print(color)
@@ -24,7 +24,7 @@ def main(args):
 	cube_rgb_colors = np.array(cube_rgb_colors)
 	np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
 
-
+	
 	# 2. setup lighting conditions (these should be different(?) for every object so save it --n_cubes times)
 	
 	
