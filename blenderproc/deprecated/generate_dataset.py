@@ -30,7 +30,7 @@ def main(args):
     for obj in objs:
         obj.enable_rigidbody(active=False)
 
-    # Aktivate the physics simulation
+    # Activate the physics simulation #why though? Shouldn't it be faster without?
     bproc.object.simulate_physics(
         min_simulation_time=4,
         max_simulation_time=20,
@@ -66,7 +66,7 @@ def main(args):
     # render the whole pipeline
     data = bproc.renderer.render()
 
-    # You could additionally write the data to a .hdf5 container
+    # You could? additionally write the data to a .hdf5 container #this should be one container for all, if anything
     bproc.writer.write_hdf5(args.output_dir+"/images/"+str(args.scene_id)+"/", data)
 
     # write the animations into .gif files
