@@ -12,8 +12,10 @@ def main(args):
 		
 	# 1. sample cube colors (this may happen only once, however it happens so fast that we can also repeat this)
 	cube_rgb_colors = []
-	cube_hsv_colors = [(i * (360 / (args.n_cubes//2)), 100, 50) for i in range(args.n_cubes//2)] + \
-		[(i * (360 / (args.n_cubes//2)), 50, 100) for i in range(args.n_cubes//2)]
+	#cube_hsv_colors = [(i * (360 / (args.n_cubes//2)), 100, 50) for i in range(args.n_cubes//2)] + \
+	#	[(i * (360 / (args.n_cubes//2)), 50, 100) for i in range(args.n_cubes//2)]
+	cube_hsv_colors = [(i * (360 / (args.n_cubes)), 50, 100) for i in range(args.n_cubes//2)]
+	
 	for color in cube_hsv_colors:
 		# print(color)
 		# print([color[0]/360, color[1]/100, color[2]/100])
@@ -159,7 +161,7 @@ if __name__ == '__main__':
 	parser.add_argument('--plot_temp_overview', type=bool, default=False, help="Plot an overview over the scene")
 	parser.add_argument('--lights_min_power', type=int, default="300", help="Minimum power of the illuminators")
 	parser.add_argument('--lights_max_power', type=int, default="1000", help="Maximum power of the illuminator")
-	parser.add_argument('--max_periodicity', type=int, default="15", help="maximum frames for lights cycle")
+	parser.add_argument('--max_periodicity', type=int, default="9", help="maximum frames for lights cycle")
 	parser.add_argument('--min_periodicity', type=int, default="3", help="minimum frames for lights cycle")
 	parser.add_argument('--camera_resolution', type=int, default="32", help="Resolution of the camera")
 	parser.add_argument('--camera_radius', type=float, default="-4", help="Radial distance of the camera")
