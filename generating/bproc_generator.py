@@ -17,14 +17,9 @@ from utils import lights_position_rotation, set_lights
 
 
 def main(args):
-	
-	if args.illumination_id >= 0:
-		light_powers = np.loadtxt(f'resources/light_powers_{args.illumination_id}.txt')
-		light_colors = np.genfromtxt(f'resources/light_colors_{args.illumination_id}.txt',dtype='str')
-		print(f'Same Illumination for every object {args.illumination_id}')
-	else:
-		light_powers = np.loadtxt(f'resources/light_powers_{args.scene_id}.txt')
-		light_colors = np.genfromtxt(f'resources/light_colors_{args.scene_id}.txt',dtype='str')
+
+	light_powers = np.loadtxt(f'resources/light_powers_{args.scene_id}.txt')
+	light_colors = np.genfromtxt(f'resources/light_colors_{args.scene_id}.txt',dtype='str')
 
 	# position of the camera relative to the (0,0,0) point
 	camera_location = [0, args.camera_radius, args.camera_height]

@@ -126,6 +126,14 @@ def main(args):
 			
 			np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
 			np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
+	
+	
+	if args.same_illumination:
+		# if we want the same illumination for everything we overwrite every file once more with the latest
+		# generated sequence
+		for scene_id in range(args.n_cubes):
+			np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
+			np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
 
 
 
@@ -140,7 +148,7 @@ def main(args):
 	# 4. execute blenderproc script from this script
 	#for scene_id in range(25,26,1): #range(args.n_cubes):
 	for scene_id in range(args.n_cubes):
-		bashCommand = f"blenderproc run bproc_generator.py --scene_id {scene_id} --n_frames {args.n_frames} --n_lights {args.n_lights} --camera_resolution {args.camera_resolution} --camera_radius {args.camera_radius} --camera_height {args.camera_height} --render_samples {args.render_samples} --gif_frame_duration {args.gif_frame_duration} --illumination_id {args.illumination_id}"
+		bashCommand = f"blenderproc run bproc_generator.py --scene_id {scene_id} --n_frames {args.n_frames} --n_lights {args.n_lights} --camera_resolution {args.camera_resolution} --camera_radius {args.camera_radius} --camera_height {args.camera_height} --render_samples {args.render_samples} --gif_frame_duration {args.gif_frame_duration}"
 		os.system(bashCommand)
 	
 	# 5. split the dataset into train, test and validation and copy them to folders accordingly
@@ -212,6 +220,10 @@ if __name__ == '__main__':
 	parser.add_argument('--debug', dest='debug', action='store_true', help="debug mode only renders one object")
 	parser.add_argument('--no-debug', dest='debug', action='store_false')
 	parser.set_defaults(feature=False)
+	
+	parser.add_argument('--same_illumination', dest='same_illumination', action='store_true', help="use the same illumination for every object")
+	parser.add_argument('--no-same_illumination', dest='same_illumination', action='store_false')
+	parser.set_defaults(same_illumination=False)
 
 
 	
