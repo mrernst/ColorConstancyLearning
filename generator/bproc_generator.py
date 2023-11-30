@@ -18,8 +18,13 @@ from utils import lights_position_rotation, set_lights
 
 def main(args):
 	
-	light_powers = np.loadtxt(f'resources/light_powers_{args.scene_id}.txt')
-	light_colors = np.genfromtxt(f'resources/light_colors_{args.scene_id}.txt',dtype='str')
+	if args.illumination_id >= 0:
+		light_powers = np.loadtxt(f'resources/light_powers_{args.illumination_id}.txt')
+		light_colors = np.genfromtxt(f'resources/light_colors_{args.illumination_id}.txt',dtype='str')
+		print(f'Same Illumination for every object {args.illumination_id}')
+	else:
+		light_powers = np.loadtxt(f'resources/light_powers_{args.scene_id}.txt')
+		light_colors = np.genfromtxt(f'resources/light_colors_{args.scene_id}.txt',dtype='str')
 
 	# position of the camera relative to the (0,0,0) point
 	camera_location = [0, args.camera_radius, args.camera_height]
@@ -113,7 +118,7 @@ if __name__ == '__main__':
 	parser.add_argument('--camera_resolution', type=int, default="64", help="Resolution of the camera")
 	parser.add_argument('--gif_frame_duration', type=int, default="100", help="Duration in ms of each frame in gif")
 	parser.add_argument('--render_samples', type=int, default="1024", help="number of samples used for rendering the light passes")
-
+	parser.add_argument('--illumination_id', type=int, default=-1, help="Illumination id so that each object gets illuminated the same way")
 	args = parser.parse_args()
 
 	main(args)

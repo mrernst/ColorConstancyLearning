@@ -13,6 +13,7 @@ COLOR_DICT = {
     'M': ([1.,0,1.], 'magenta'),
     'C': ([0,1.,1.], 'cyan'),
     'Y': ([1.,1.,0], 'yellow'),
+    'O': ([0,0,0], 'black')
 }
 
 def light_code_to_colorrgb(code):
