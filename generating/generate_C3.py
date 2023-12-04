@@ -33,6 +33,9 @@ def main(args):
 	
 	# integrate the sinusoidal code you wrote for implementation
 	possible_colors = np.array(['R', 'G', 'B', 'C', 'M', 'Y', 'W'])
+	
+	if args.neutral_lights:
+		possible_colors =  np.array(['W'])
 
 	if args.temporal:
 		N_FRAMES = args.n_frames
@@ -56,7 +59,7 @@ def main(args):
 				c_stacked = []
 				while current_frame <= N_FRAMES+OFFSET:
 					
-					color = np.random.choice(COLORS) if (np.random.random() > 0.5) else 'O'
+					color = np.random.choice(COLORS) if (np.random.random() > args.turn_on_probability) else 'O'
 					wattage = (np.random.random()*(1-MIN_WATT/MAX_WATT) + MIN_WATT/MAX_WATT) * MAX_WATT if color != 'O' else 0. # 300 -1000 Watt random luminosity
 					periodicity = int(np.random.random()*(MAX_FRAMES-MIN_FRAMES)+MIN_FRAMES) # randomly 3 to 50 frames
 					#x = np.arange(0, 2*np.pi, 0.1)
@@ -113,10 +116,10 @@ def main(args):
 			light_colors = np.random.choice(possible_colors, size=(args.n_frames, args.n_lights))
 			light_powers = np.random.uniform(low=args.lights_min_power, high=args.lights_max_power, size=(args.n_frames, args.n_lights))
 				
-			# Turn off individual lights with probability 0.5
+			# Turn off individual lights with probability
 			for row in range(args.n_frames):
 				for col in range(args.n_lights):
-					if np.random.random() < 0.5:
+					if np.random.random() > args.turn_on_probability:
 						light_colors[row, col] = 'O'
 						light_powers[row, col] = 0.0
 				if np.sum(light_powers[row,:]) == 0:
@@ -206,6 +209,7 @@ if __name__ == '__main__':
 	parser.add_argument('--render_samples', type=int, default="64", help="number of samples used for rendering the light passes")
 	parser.add_argument('--gif_frame_duration', type=int, default="0", help="Duration in ms of each frame in gif")
 	parser.add_argument('--illumination_id', type=int, default=-1, help="Illumination id so that each object gets illuminated the same way")
+	parser.add_argument('--turn_on_probability', type=float, default="0.5", help="probability with with the lights turn on")
 
 
 	# boolean arguments
@@ -216,6 +220,10 @@ if __name__ == '__main__':
 	parser.add_argument('--temporal', dest='temporal', action='store_true', help="Make a temporally consistent dataset")
 	parser.add_argument('--no-temporal', dest='temporal', action='store_false')
 	parser.set_defaults(temporal=True)
+	
+	parser.add_argument('--neutral_lights', dest='neutral_lights', action='store_true', help="Force all lights in the scene to be white")
+	parser.add_argument('--no-neutral_lights', dest='neutral_lights', action='store_false')
+	parser.set_defaults(neutral_lights=False)
 
 	parser.add_argument('--debug', dest='debug', action='store_true', help="debug mode only renders one object")
 	parser.add_argument('--no-debug', dest='debug', action='store_false')
