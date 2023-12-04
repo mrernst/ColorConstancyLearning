@@ -153,9 +153,8 @@ run_on_cluster.sbatch
 
 # plot script for specific experiments
 learning/draw_results.py
-learning/save/*
+learning/main/save/*
 *.pdf
 generating/dataset/*
 *.txt
 learning/data/*
-main/save/*
