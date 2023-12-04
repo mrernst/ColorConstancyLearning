@@ -211,15 +211,15 @@ if __name__ == '__main__':
 	# boolean arguments
 	parser.add_argument('--plot', dest='plot', action='store_true', help="Plot an overview over the scene")
 	parser.add_argument('--no-plot', dest='plot', action='store_false')
-	parser.set_defaults(feature=False)
+	parser.set_defaults(plot=False)
 
 	parser.add_argument('--temporal', dest='temporal', action='store_true', help="Make a temporally consistent dataset")
 	parser.add_argument('--no-temporal', dest='temporal', action='store_false')
-	parser.set_defaults(feature=True)
+	parser.set_defaults(temporal=True)
 
 	parser.add_argument('--debug', dest='debug', action='store_true', help="debug mode only renders one object")
 	parser.add_argument('--no-debug', dest='debug', action='store_false')
-	parser.set_defaults(feature=False)
+	parser.set_defaults(debug=False)
 	
 	parser.add_argument('--same_illumination', dest='same_illumination', action='store_true', help="use the same illumination for every object")
 	parser.add_argument('--no-same_illumination', dest='same_illumination', action='store_false')
