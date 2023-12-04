@@ -158,3 +158,4 @@ learning/save/*
 generating/dataset/*
 *.txt
 learning/data/*
+main/save/*
