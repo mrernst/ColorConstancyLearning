@@ -91,7 +91,7 @@ def train_linear_classifier(train_dataloader, test_dataloader, val_dataloader, i
       backbone,
       SplitOutput(0),
       classifier
-    )
+    ).to(device)
     
     
     training_loop = tqdm(range(epochs), ncols=80)

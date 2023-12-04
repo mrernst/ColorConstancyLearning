@@ -49,7 +49,6 @@ device = (
     # if torch.backends.mps.is_available()
     else "cpu"
 )
-
 RUN_NAME = f'{datetime.datetime.now().strftime("%d-%m-%y_%H:%M")}_{args.name}_seed_{args.seed}_{args.dataset}_aug_{args.contrast}_{args.main_loss}_reg_{args.reg_loss}'
 LR_DECAY_EPOCHS = [0]
 
@@ -104,6 +103,7 @@ def log_lls_acc():
 
 
 def train():
+    print(f"[INFO:] Using {device} backend")
     path_to_experiment = os.path.join(args.log_dir, RUN_NAME)
     # make directory
     os.makedirs(path_to_experiment, exist_ok=True)
