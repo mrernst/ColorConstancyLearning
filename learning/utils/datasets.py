@@ -200,6 +200,11 @@ class TimeContrastiveDataset(Dataset):
         chosen_index = np.random.choice(possible_indices)
         return self.get_single_item(chosen_index)
     
+    def pil_loader(self, path):
+        # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+        with open(path, "rb") as f:
+            img = Image.open(f)
+            return img.convert("RGB")
     
     def get_single_item(self, idx):
         """
@@ -214,7 +219,7 @@ class TimeContrastiveDataset(Dataset):
         if isinstance(path_to_file, pd.core.series.Series):
             path_to_file = path_to_file.item()
         
-        image = Image.open(path_to_file).convert('RGB')
+        image = self.pil_loader(path_to_file)
         obj_info = self.registry.iloc[idx, 1:].to_dict()
         
         label = self.registry.loc[idx, "label"]

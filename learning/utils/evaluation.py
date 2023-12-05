@@ -134,6 +134,7 @@ def train(dataloader, model, loss_fn, optimizer, device='cpu'):
     num_batches = len(dataloader)
     train_loss, correct = 0, 0
     for batch, (X, y) in enumerate(dataloader):
+        print(batch)
         X, y = X.to(device), y.to(device)
 
         # Compute prediction error
