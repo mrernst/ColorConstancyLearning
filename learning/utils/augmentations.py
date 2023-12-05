@@ -8,7 +8,9 @@
 # standard libraries
 # -----
 import torch
-from torchvision.transforms import v2
+#from torchvision.transforms import v2
+# to guarantee backward compatibility with pytorch 1.12. use
+from torchvision import transforms, utils
 
 
 
@@ -23,24 +25,22 @@ def get_transformations(contrast_type, rgb_mean, rgb_std, crop_size):
 	"""
 	
 	# setup for case contrast_type == 'combined'
-	normalize = v2.Normalize(mean=rgb_mean, std=rgb_std)
+	normalize = transforms.Normalize(mean=rgb_mean, std=rgb_std)
 	
 	s = 1.0
-	train_transform = v2.Compose([
-			v2.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
-			v2.RandomHorizontalFlip(),
-			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+	train_transform = transforms.Compose([
+			transforms.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
+			transforms.RandomHorizontalFlip(),
+			transforms.RandomApply([
+				transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
 			], p=0.8),
-			v2.RandomGrayscale(p=0.2),
-			v2.ToImage(), 
-			v2.ToDtype(torch.float32, scale=True),
+			transforms.RandomGrayscale(p=0.2),
+			transforms.ToTensor(),
 			normalize,
 		])
 	
-	val_transform = v2.Compose([
-			v2.ToImage(),
-			v2.ToDtype(torch.float32, scale=True),
+	val_transform = transforms.Compose([
+			transforms.ToTensor(),
 			normalize,
 		])
 	
@@ -51,35 +51,32 @@ def get_transformations(contrast_type, rgb_mean, rgb_std, crop_size):
 		# if time, replace the created train_transform with val_transform
 		train_transform = val_transform
 		# or just return ToTensor() (what we do so far, but normalization might be good)
-		# train_transform, val_transform = v2.ToTensor(), v2.ToTensor()
+		# train_transform, val_transform = transforms.ToTensor(), transforms.ToTensor()
 	elif contrast_type == 'nocontrast':
 		train_transform = TwoContrastTransform(val_transform)
 	elif contrast_type == 'supervised':
-		train_transform = v2.Compose([
-			v2.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
-			v2.RandomHorizontalFlip(),
-			v2.ToImage(),
-			v2.ToDtype(torch.float32, scale=True),
+		train_transform = transforms.Compose([
+			transforms.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
+			transforms.RandomHorizontalFlip(),
+			transforms.ToTensor(),
 			normalize,
 		])
 		train_transform = TwoContrastTransform(train_transform)
 	elif contrast_type == 'combined_jitter':
-		train_transform = v2.Compose([
-			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+		train_transform = transforms.Compose([
+			transforms.RandomApply([
+				transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
 			], p=0.8),
-			v2.ToImage(),
-			v2.ToDtype(torch.float32, scale=True),
+			transforms.ToTensor(),
 			normalize,
 		])
 	elif contrast_type == 'combined_jitterplusgrayscale':
-		train_transform = v2.Compose([
-			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+		train_transform = transforms.Compose([
+			transforms.RandomApply([
+				transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
 			], p=0.8),
-			v2.RandomGrayscale(p=0.2),
-			v2.ToImage(),
-			v2.ToDtype(torch.float32, scale=True),
+			transforms.RandomGrayscale(p=0.2),
+			transforms.ToTensor(),
 			normalize,
 			])
 
