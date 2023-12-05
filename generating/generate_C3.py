@@ -9,145 +9,147 @@ import os
 import shutil
 
 def main(args):
+	
+	if not args.use_existing_resources:
+		# 1. sample cube colors (this may happen only once, however it happens so fast that we can also repeat this)
+		cube_rgb_colors = []
+		#cube_hsv_colors = [(i * (360 / (args.n_cubes//2)), 100, 50) for i in range(args.n_cubes//2)] + \
+		#	[(i * (360 / (args.n_cubes//2)), 50, 100) for i in range(args.n_cubes//2)]
+		cube_hsv_colors = [(i * (360 / (args.n_cubes)), 50, 100) for i in range(args.n_cubes)]
 		
-	# 1. sample cube colors (this may happen only once, however it happens so fast that we can also repeat this)
-	cube_rgb_colors = []
-	#cube_hsv_colors = [(i * (360 / (args.n_cubes//2)), 100, 50) for i in range(args.n_cubes//2)] + \
-	#	[(i * (360 / (args.n_cubes//2)), 50, 100) for i in range(args.n_cubes//2)]
-	cube_hsv_colors = [(i * (360 / (args.n_cubes)), 50, 100) for i in range(args.n_cubes)]
+		for color in cube_hsv_colors:
+			# print(color)
+			# print([color[0]/360, color[1]/100, color[2]/100])
+			cube_rgb_colors.append(hsv_to_rgb([color[0]/360, color[1]/100, color[2]/100]))
+			
+		cube_rgb_colors = np.array(cube_rgb_colors)
+		np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
 	
-	for color in cube_hsv_colors:
-		# print(color)
-		# print([color[0]/360, color[1]/100, color[2]/100])
-		cube_rgb_colors.append(hsv_to_rgb([color[0]/360, color[1]/100, color[2]/100]))
 		
-	cube_rgb_colors = np.array(cube_rgb_colors)
-	np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
-
-	
-	# 2. setup lighting conditions (these should be different(?) for every object so save it --n_cubes times)
-	
-	
-	# debug mode only renders 1 object
-	args.n_cubes = 1 if args.debug else args.n_cubes
-	
-	# integrate the sinusoidal code you wrote for implementation
-	possible_colors = np.array(['R', 'G', 'B', 'C', 'M', 'Y', 'W'])
-	
-	if args.neutral_lights:
-		possible_colors =  np.array(['W'])
-
-	if args.temporal:
-		N_FRAMES = args.n_frames
-		MAX_WATT = args.lights_max_power
-		MIN_WATT = args.lights_min_power
-		COLORS = possible_colors
-		MAX_FRAMES = args.max_periodicity
-		MIN_FRAMES = args.min_periodicity
-		N_LIGHTS = args.n_lights
-		OFFSET = 100
+		# 2. setup lighting conditions (these should be different(?) for every object so save it --n_cubes times)
 		
-		for scene_id in range(args.n_cubes):
-			dict_of_lights = {}
-			if args.plot:
-				fig, ax = plt.subplots(N_LIGHTS,1, sharex=True, sharey=True, figsize=(10,4))
+		
+		# debug mode only renders 1 object
+		args.n_cubes = 1 if args.debug else args.n_cubes
+		
+		# integrate the sinusoidal code you wrote for implementation
+		possible_colors = np.array(['R', 'G', 'B', 'C', 'M', 'Y', 'W'])
+		
+		if args.neutral_lights:
+			possible_colors =  np.array(['W'])
+	
+		if args.temporal:
+			N_FRAMES = args.n_frames
+			MAX_WATT = args.lights_max_power
+			MIN_WATT = args.lights_min_power
+			COLORS = possible_colors
+			MAX_FRAMES = args.max_periodicity
+			MIN_FRAMES = args.min_periodicity
+			N_LIGHTS = args.n_lights
+			OFFSET = 100
 			
-			for light in range(N_LIGHTS):
-				current_frame = 0
-				x_stacked = []
-				y_stacked = []
-				c_stacked = []
-				while current_frame <= N_FRAMES+OFFSET:
-					
-					color = np.random.choice(COLORS) if (np.random.random() > args.turn_on_probability) else 'O'
-					wattage = (np.random.random()*(1-MIN_WATT/MAX_WATT) + MIN_WATT/MAX_WATT) * MAX_WATT if color != 'O' else 0. # 300 -1000 Watt random luminosity
-					periodicity = int(np.random.random()*(MAX_FRAMES-MIN_FRAMES)+MIN_FRAMES) # randomly 3 to 50 frames
-					#x = np.arange(0, 2*np.pi, 0.1)
-					
-					x = np.arange(current_frame, current_frame+periodicity, 1)
-					y = np.sin((x-current_frame) * 2*np.pi/periodicity + 3*np.pi/2)*wattage/2 + wattage/2
-					
-					x_stacked.append(x)
-					y_stacked.append(y)
-					c_stacked.append([color]*x.shape[0])
-					
-					current_frame += periodicity
-					if args.plot:
-						ax[light].set_ylim([0-100,MAX_WATT + 100])
-						ax[light].set_xlim([OFFSET,N_FRAMES+OFFSET])
-						ax[light].spines['right'].set_visible(False)
-						ax[light].spines['top'].set_visible(False)
-						ax[light].spines['left'].set_visible(False)
-						#ax[light].spines['bottom'].set_visible(False)
-						ax[light].grid(axis='x', color='white', alpha=0.4)
-						ax[light].plot(x, y, color=scale_lightness(light_code_to_colorname(color), 0.75, 1.), alpha=1.0)
-						ax[light].set_xticks([])
-						ax[light].set_yticks([])
-			
-				x_stacked = np.concatenate(x_stacked)
-				y_stacked = np.concatenate(y_stacked)
-				c_stacked = np.concatenate(c_stacked)
-			
-				dict_of_lights[light] = [x_stacked[OFFSET:N_FRAMES+OFFSET],y_stacked[OFFSET:N_FRAMES+OFFSET],c_stacked[OFFSET:N_FRAMES+OFFSET]]
-			
-			if args.plot:
-				#plt.tight_layout()
-				ax[0].set_title('Temporal Lighting Pattern')
-				ax[-1].set_xlabel('Time')
-				ax[-1].set_ylabel('Luminosity (W)')
-				ax[-1].yaxis.set_label_coords(-0.01,+4.5)
+			for scene_id in range(args.n_cubes):
+				dict_of_lights = {}
+				if args.plot:
+					fig, ax = plt.subplots(N_LIGHTS,1, sharex=True, sharey=True, figsize=(10,4))
 				
-				plt.show()
-			else:
-				plt.clf()
+				for light in range(N_LIGHTS):
+					current_frame = 0
+					x_stacked = []
+					y_stacked = []
+					c_stacked = []
+					while current_frame <= N_FRAMES+OFFSET:
+						
+						color = np.random.choice(COLORS) if (np.random.random() > args.turn_on_probability) else 'O'
+						wattage = (np.random.random()*(1-MIN_WATT/MAX_WATT) + MIN_WATT/MAX_WATT) * MAX_WATT if color != 'O' else 0. # 300 -1000 Watt random luminosity
+						periodicity = int(np.random.random()*(MAX_FRAMES-MIN_FRAMES)+MIN_FRAMES) # randomly 3 to 50 frames
+						#x = np.arange(0, 2*np.pi, 0.1)
+						
+						x = np.arange(current_frame, current_frame+periodicity, 1)
+						y = np.sin((x-current_frame) * 2*np.pi/periodicity + 3*np.pi/2)*wattage/2 + wattage/2
+						
+						x_stacked.append(x)
+						y_stacked.append(y)
+						c_stacked.append([color]*x.shape[0])
+						
+						current_frame += periodicity
+						if args.plot:
+							ax[light].set_ylim([0-100,MAX_WATT + 100])
+							ax[light].set_xlim([OFFSET,N_FRAMES+OFFSET])
+							ax[light].spines['right'].set_visible(False)
+							ax[light].spines['top'].set_visible(False)
+							ax[light].spines['left'].set_visible(False)
+							#ax[light].spines['bottom'].set_visible(False)
+							ax[light].grid(axis='x', color='white', alpha=0.4)
+							ax[light].plot(x, y, color=scale_lightness(light_code_to_colorname(color), 0.75, 1.), alpha=1.0)
+							ax[light].set_xticks([])
+							ax[light].set_yticks([])
+				
+					x_stacked = np.concatenate(x_stacked)
+					y_stacked = np.concatenate(y_stacked)
+					c_stacked = np.concatenate(c_stacked)
+				
+					dict_of_lights[light] = [x_stacked[OFFSET:N_FRAMES+OFFSET],y_stacked[OFFSET:N_FRAMES+OFFSET],c_stacked[OFFSET:N_FRAMES+OFFSET]]
+				
+				if args.plot:
+					#plt.tight_layout()
+					ax[0].set_title('Temporal Lighting Pattern')
+					ax[-1].set_xlabel('Time')
+					ax[-1].set_ylabel('Luminosity (W)')
+					ax[-1].yaxis.set_label_coords(-0.01,+4.5)
+					
+					plt.show()
+				else:
+					plt.clf()
+				
+				
+				
+				
+				
+				light_colors = np.array([dict_of_lights[c][-1] for c in range(args.n_lights)]).T
+				light_powers = np.array([dict_of_lights[c][-2] for c in range(args.n_lights)]).T
+				
+				np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
+				np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
 			
-			
-			
-			
-			
-			light_colors = np.array([dict_of_lights[c][-1] for c in range(args.n_lights)]).T
-			light_powers = np.array([dict_of_lights[c][-2] for c in range(args.n_lights)]).T
-			
-			np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
-			np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
+		else:
+			for scene_id in range(args.n_cubes):
+				light_colors = np.random.choice(possible_colors, size=(args.n_frames, args.n_lights))
+				light_powers = np.random.uniform(low=args.lights_min_power, high=args.lights_max_power, size=(args.n_frames, args.n_lights))
+					
+				# Turn off individual lights with probability
+				for row in range(args.n_frames):
+					for col in range(args.n_lights):
+						if np.random.random() > args.turn_on_probability:
+							light_colors[row, col] = 'O'
+							light_powers[row, col] = 0.0
+					if np.sum(light_powers[row,:]) == 0:
+						col = np.random.randint(low=0, high=args.n_lights)
+						light_colors[row, col] = np.random.choice(possible_colors)
+						light_powers[row, col] = np.random.uniform(low=args.lights_min_power, high=args.lights_max_power)
+				
+				np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
+				np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
 		
+		
+		if args.same_illumination:
+			# if we want the same illumination for everything we overwrite every file once more with the latest
+			# generated sequence
+			for scene_id in range(args.n_cubes):
+				np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
+				np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
+	
+	
+	
+		
+			
+		
+		# 3. build object files
+		#bashCommand = f"blenderproc run export_objects.py" 
+		#os.system(bashCommand) #technically also only needs to be done once
 	else:
-		for scene_id in range(args.n_cubes):
-			light_colors = np.random.choice(possible_colors, size=(args.n_frames, args.n_lights))
-			light_powers = np.random.uniform(low=args.lights_min_power, high=args.lights_max_power, size=(args.n_frames, args.n_lights))
-				
-			# Turn off individual lights with probability
-			for row in range(args.n_frames):
-				for col in range(args.n_lights):
-					if np.random.random() > args.turn_on_probability:
-						light_colors[row, col] = 'O'
-						light_powers[row, col] = 0.0
-				if np.sum(light_powers[row,:]) == 0:
-					col = np.random.randint(low=0, high=args.n_lights)
-					light_colors[row, col] = np.random.choice(possible_colors)
-					light_powers[row, col] = np.random.uniform(low=args.lights_min_power, high=args.lights_max_power)
+		pass
 			
-			np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
-			np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
-	
-	
-	if args.same_illumination:
-		# if we want the same illumination for everything we overwrite every file once more with the latest
-		# generated sequence
-		for scene_id in range(args.n_cubes):
-			np.savetxt(f'resources/light_colors_{scene_id}.txt', light_colors, fmt='%s', delimiter='')
-			np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
-
-
-
-	
-		
-	
-	# 3. build object files
-	#bashCommand = f"blenderproc run export_objects.py" 
-	#os.system(bashCommand) #technically also only needs to be done once
-
-		
 	# 4. execute blenderproc script from this script
 	#for scene_id in range(25,26,1): #range(args.n_cubes):
 	for scene_id in range(args.n_cubes):
@@ -213,6 +215,12 @@ if __name__ == '__main__':
 
 
 	# boolean arguments
+	
+	parser.add_argument('--use_existing_resources', dest='use_existing_resources', action='store_true', help="Use existing resource files, i.e. don't generate them")
+	parser.add_argument('--no-use_existing_resources', dest='use_existing_resources', action='store_false')
+	parser.set_defaults(use_existing_resources=False) # should be default true on release I think
+	
+	
 	parser.add_argument('--plot', dest='plot', action='store_true', help="Plot an overview over the scene")
 	parser.add_argument('--no-plot', dest='plot', action='store_false')
 	parser.set_defaults(plot=False)
