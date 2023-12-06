@@ -45,8 +45,8 @@ from utils.visualization import ConfusionMatrix
 device = (
     "cuda"
     if torch.cuda.is_available()
-    # else "mps"
-    # if torch.backends.mps.is_available()
+    else "mps"
+    if torch.backends.mps.is_available()
     else "cpu"
 )
 RUN_NAME = f'{datetime.datetime.now().strftime("%d-%m-%y_%H:%M")}_{args.name}_seed_{args.seed}_{args.dataset}_aug_{args.contrast}_{args.main_loss}_reg_{args.reg_loss}'
@@ -139,6 +139,7 @@ def train():
         contrastive=False,
         )
     dataloader_train_eval = DataLoader(dataset_train_eval, batch_size=args.batch_size, num_workers=0, shuffle=False)
+    
     dataset_test = DATASETS[args.dataset]['class'](
         root=args.data_root,
         split=args.test_split,
@@ -146,14 +147,6 @@ def train():
         contrastive=False,
         )
     dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, num_workers=0, shuffle=False)
-        
-    dataset_val = DATASETS[args.dataset]['class'](
-        root=args.data_root,
-        split=args.val_split,
-        transform=val_transform,
-        contrastive=False,
-        )
-    dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, num_workers=0, shuffle=False)
 
         
     if args.encoder == 'resnet18':
@@ -176,18 +169,11 @@ def train():
         writer.add_scalar('accloss/test/class/accuracy', acc, 0)
         writer.add_scalar('accloss/test/class/loss', test_loss, 0)
         class_cm.to_tensorboard(writer, dataset_test.labels, 0, label='test/class/cm',)
-        
-        acc, test_loss, class_cm = supervised_eval(net, dataloader_val, F.cross_entropy, dataset_val.n_classes, device=device)
-        writer.add_scalar('accloss/val/class/accuracy', acc, 0)
-        writer.add_scalar('accloss/val/class/loss', test_loss, 0)
-        class_cm.to_tensorboard(writer, dataset_test.labels, 0, label='val/class/cm',)
-        
-
     else:
         
         if args.linear_nn:
             # linear encoder only on the test set?
-            _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, dataloader_val, 84, dataset_train_eval.n_classes, backbone=net, epochs=200, global_epoch=0, test_every=1, writer=writer, device=device)
+            _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes, model=net, epochs=100, global_epoch=0, test_every=1, writer=writer, device=device)
             # in this linear classifier function also the confusion matrix should be included, ideally in an iterative way. Then the lstsq_model only is needed for online testing
             # in the end it should be integrated in the load_and_evaluate script
             # also you need some testing here to actually see when learning converges
@@ -213,28 +199,6 @@ def train():
         
         log_knn_acc(features_train_eval, labels_train_eval, features_test, labels_test, dataset_test, SIMILARITY_FUNCTIONS[args.similarity], writer, 0, class_cm, 'test/class', args.knn_batch_size)
         
-        
-        features_val, labels_val = get_representations(net, dataloader_val, device=device)
-        pred, acc = lls_eval(lstsq_model, features_val, labels_val)
-        wb = wcss_bcss(features_val, labels_val, dataset_val.n_classes)
-        pacmap_plot = get_pacmap(features_val, labels_val, 0,
-            dataset_val.n_classes, dataset_val.labels)
-        
-        writer.add_scalar('accloss/val/class/accuracy', acc, 0)
-        writer.add_scalar('analytics/val/class/WCSS-BCSS', wb, 0)
-        writer.add_figure('val/class/PacMap', pacmap_plot, 0)
-        
-        class_cm.update(pred.cpu(), labels_val.cpu())
-        class_cm.to_tensorboard(writer, dataset_val.labels, 0, label='val/class/cm',)
-        class_cm.reset()
-        
-        log_knn_acc(features_train_eval, labels_train_eval, features_val, labels_val, dataset_val, SIMILARITY_FUNCTIONS[args.similarity], writer, 0, class_cm, 'val/class', args.knn_batch_size)
-        
-        if args.exhaustive_test:
-            # change labelling of evaluation set
-            # test whether we can predict lighting
-            # maybe even test whether we can predict from different levels
-            pass
                     
         if args.save_embedding:
             writer.add_embedding(features_test, tag='Embedding', global_step=0)
@@ -253,7 +217,8 @@ def train():
     
     epoch_loop = tqdm(range(args.n_epochs), ncols=80)
     for epoch in epoch_loop:
-        
+        num_batches = len(dataloader_train)
+        sum_epoch_loss = 0
         for (x, x_pair), labels in dataloader_train:
             x, y = torch.cat([x, x_pair], 0).to(device), labels.to(device)
             representation, projection = net(x)
@@ -270,7 +235,10 @@ def train():
             loss.backward()
             optimizer.step()
             epoch_loop.set_description(f'Loss: {loss.item():>8.4f}')
-            net.train()
+            sum_epoch_loss += loss.item()
+            #always write down the loss
+        writer.add_scalar('accloss/train/loss', sum_epoch_loss/num_batches, epoch + 1)
+        net.train()
             
         # update learning rate
         lr_decay_steps = torch.sum(epoch > torch.Tensor(LR_DECAY_EPOCHS))
@@ -287,7 +255,7 @@ def train():
             net.eval()
             
             if args.main_loss == 'supervised':
-                writer.add_scalar('accloss/train/loss', loss.item(), epoch + 1)
+
                 writer.add_scalar('analytics/learningrate', scheduler.get_last_lr()[0], epoch + 1)
 
                 acc, test_loss, class_cm = supervised_eval(net, dataloader_test, F.cross_entropy, dataset_test.n_classes, device=device)
@@ -295,14 +263,10 @@ def train():
                 writer.add_scalar('accloss/test/class/loss', test_loss, epoch + 1)
                 class_cm.to_tensorboard(writer, dataset_test.labels, epoch + 1, label='test/class/cm',)
                 
-                acc, test_loss, class_cm = supervised_eval(net, dataloader_val, F.cross_entropy, dataset_val.n_classes, device=device)
-                writer.add_scalar('accloss/val/class/accuracy', acc, epoch + 1)
-                writer.add_scalar('accloss/val/class/loss', test_loss, epoch + 1)
-                class_cm.to_tensorboard(writer, dataset_test.labels, epoch + 1, label='val/class/cm',)
             else:
                 
                 if args.linear_nn:
-                    _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, dataloader_val, 84, dataset_train_eval.n_classes, backbone=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
+                    _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes, model=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
                     
                     # in this linear classifier function also the confusion matrix and the wcss-bcss should be included, ideally in an iterative way. Then the lstsq_model only is needed for online testing
                     # also you need some testing here to actually see when learning converges
@@ -319,7 +283,6 @@ def train():
                       f"Read-Out Acc:{acc * 100:>6.2f}%, WCSS/BCSS:{wb:>8.4f}")
         
                 # record results
-                writer.add_scalar('accloss/train/loss', loss.item(), epoch + 1)
                 writer.add_scalar('accloss/test/class/accuracy', acc, epoch + 1)
                 writer.add_scalar('analytics/test/class/WCSS-BCSS', wb, epoch + 1)
                 writer.add_scalar('analytics/learningrate', scheduler.get_last_lr()[0], epoch + 1)
@@ -333,28 +296,6 @@ def train():
   
                 log_knn_acc(features_train_eval, labels_train_eval, features_test, labels_test, dataset_test, SIMILARITY_FUNCTIONS[args.similarity], writer, epoch + 1, class_cm, 'test/class', args.knn_batch_size)
                 
-                
-                
-                features_val, labels_val = get_representations(net, dataloader_val, device=device)
-                pred, acc = lls_eval(lstsq_model, features_val, labels_val)
-                wb = wcss_bcss(features_val, labels_val, dataset_val.n_classes)
-                pacmap_plot = get_pacmap(features_val, labels_val, epoch + 1,
-                    dataset_val.n_classes, dataset_val.labels)
-                writer.add_scalar('accloss/val/class/accuracy', acc, epoch + 1)
-                writer.add_scalar('analytics/val/class/WCSS-BCSS', wb, epoch + 1)
-                writer.add_figure('val/class/PacMap', pacmap_plot, epoch + 1)
-                
-                class_cm.update(pred.cpu(), labels_val.cpu())
-                class_cm.to_tensorboard(writer, dataset_val.labels, epoch + 1, label='val/class/cm',)
-                class_cm.reset()
-                
-                log_knn_acc(features_train_eval, labels_train_eval, features_val, labels_val, dataset_val, SIMILARITY_FUNCTIONS[args.similarity], writer, epoch + 1, class_cm, 'val/class', args.knn_batch_size)
-                
-                if args.exhaustive_test:
-                    pass
-                    # change labelling of evaluation set
-                    # test whether we can predict lighting
-                    # maybe even test whether we can predict from different levels
             
             
             # set network back to training mode

@@ -37,8 +37,7 @@ def get_representations(model, data_loader, device='cpu'):
     model.eval()
     features = []
     labels = []
-    for data_samples, data_labels in data_loader:
-        #print(data_labels)
+    for data_samples, data_labels in data_loader:      
         features.append(model(data_samples.to(device))[0])
         labels.append(data_labels.to(device))
     features = torch.cat(features, 0)
@@ -57,7 +56,7 @@ def lls_fit(train_features, train_labels, n_classes):
         return:
             ls: the trained lstsq model (torch.linalg) 
     """
-    ls = lstsq(train_features, F.one_hot(train_labels, n_classes).type(torch.float32))
+    ls = lstsq(train_features, F.one_hot(train_labels, n_classes).type(torch.float32)) # I have the feeling that this doesn't work on CUDA for whatever reason so maybe I should X it, it might not work at all with the pt2 installation, maybe revert to CPU and calculate using scipy as in earlier iterations
     
     return ls
 
@@ -78,30 +77,22 @@ def lls_eval(trained_lstsq_model, eval_features, eval_labels):
 
 
 
-def train_linear_classifier(train_dataloader, test_dataloader, val_dataloader, input_features, num_classes, backbone, epochs=200, global_epoch=0, test_every=1, writer=None, device='cpu'):
+def train_linear_classifier(train_dataloader, test_dataloader, input_features, num_classes, model, epochs=200, global_epoch=0, test_every=1, writer=None, device='cpu'):
     print(f'[INFO:] Starting linear evaluation with Neural Network at epoch {global_epoch}')
-    # tune the backbone
-    backbone.eval()
     #define model loss and optimizer
     classifier = LinearClassifier(input_features, num_classes).to(device)
+
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
-    
-    model = torch.nn.Sequential(
-      backbone,
-      SplitOutput(0),
-      classifier
-    ).to(device)
     
     
     training_loop = tqdm(range(epochs), ncols=80)
     
     for t in training_loop:
-        training_loss, training_acc = train(train_dataloader, model, loss_fn, optimizer, device=device)
+        training_loss, training_acc = train(train_dataloader, model, classifier, loss_fn, optimizer, device=device)
         if t%test_every==0:
-            testing_loss, testing_acc = test(test_dataloader, model, loss_fn, device=device)
+            testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, device=device)
             training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
-            validation_loss, validation_acc = test(val_dataloader, model, loss_fn, device=device)
 
             
             if writer:
@@ -118,19 +109,17 @@ def train_linear_classifier(train_dataloader, test_dataloader, val_dataloader, i
                 # log data to tensorboard writer
                 writer.add_scalar(description_string + f'/accloss/train/loss', training_loss, logged_epoch + 1)
                 writer.add_scalar(description_string + f'/accloss/test/loss', testing_loss, logged_epoch + 1)
-                writer.add_scalar(description_string + f'/accloss/val/loss', testing_loss, logged_epoch + 1)
                 writer.add_scalar(description_string + f'/accloss/train/accuracy', training_acc, logged_epoch + 1)
                 writer.add_scalar(description_string + f'/accloss/test/accuracy', testing_acc, logged_epoch + 1)
-                writer.add_scalar(description_string + f'/accloss/val/accuracy', testing_acc, logged_epoch + 1)
-            
-                
-    
+
+    model.train()
     return testing_loss, testing_acc
 
 
-def train(dataloader, model, loss_fn, optimizer, device='cpu'):
+def train(dataloader, model, classifier, loss_fn, optimizer, device='cpu'):
     size = len(dataloader.dataset)
-    model.train()
+    model.eval()
+    classifier.train()
     num_batches = len(dataloader)
     train_loss, correct = 0, 0
     for batch, (X, y) in enumerate(dataloader):
@@ -138,7 +127,10 @@ def train(dataloader, model, loss_fn, optimizer, device='cpu'):
         X, y = X.to(device), y.to(device)
 
         # Compute prediction error
-        pred = model(X)
+        with torch.no_grad():
+            features = model.encoder(X)
+        pred = classifier(features.detach())
+        
         loss = loss_fn(pred, y)
         
         train_loss += loss.item()
@@ -158,15 +150,16 @@ def train(dataloader, model, loss_fn, optimizer, device='cpu'):
         
         
         
-def test(dataloader, model, loss_fn, cm=None, device='cpu'):
+def test(dataloader, model, classifier, loss_fn, cm=None, device='cpu'):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
+    classifier.eval()
     test_loss, correct = 0, 0
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
-            pred = model(X)
+            pred = classifier(model.encoder(X))
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
             if cm:

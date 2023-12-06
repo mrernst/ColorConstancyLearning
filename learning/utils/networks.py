@@ -177,7 +177,7 @@ class LinearClassifier(nn.Module):
        self.linear_out = nn.Sequential(
            nn.Flatten(),
            nn.Linear(num_features, num_classes),
-           nn.ReLU(),
+           #nn.ReLU(),
        )   
        
    def forward(self, x):

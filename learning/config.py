@@ -104,13 +104,13 @@ parser.add_argument('--no-projectionhead',
                     action='store_false')
 parser.set_defaults(projectionhead=True)
 
-parser.add_argument('--exhaustive_test',
-                    dest='exhaustive_test',
-                    action='store_true')
-parser.add_argument('--no-exhaustive_test',
-                    dest='exhaustive_test',
-                    action='store_false')
-parser.set_defaults(exhaustive_test=False)
+# parser.add_argument('--exhaustive_test',
+#                     dest='exhaustive_test',
+#                     action='store_true')
+# parser.add_argument('--no-exhaustive_test',
+#                     dest='exhaustive_test',
+#                     action='store_false')
+# parser.set_defaults(exhaustive_test=False)
 
 
 parser.add_argument('--save_model',
@@ -136,7 +136,7 @@ parser.add_argument('--n_epochs',
                     default=100,
                     type=int)
 parser.add_argument('--batch_size',
-                    default=256,
+                    default=300,
                     help='Batch size of the SSL algorithm, in the train.py this also determines the batch size of the linear classifier',
                     type=int)
 parser.add_argument('--feature_dim',
