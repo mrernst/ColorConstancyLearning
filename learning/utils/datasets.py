@@ -394,7 +394,7 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
     for ibatch, sample_batched in enumerate(dataloader):
         print(ibatch)
-        print(sample_batched[1])
+        print(sample_batched[0][0].shape)
 
         show_batch(sample_batched)
         if ibatch == 4:

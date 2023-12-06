@@ -157,7 +157,7 @@ parser.add_argument('--knn_batch_size',
                     type=int)
 
 parser.add_argument('--lrate_decay',
-                    default=0.0,
+                    default=1.0,
                     type=float)
 parser.add_argument('--decorr_weight',
                     default=0.4,
