@@ -83,7 +83,7 @@ def train_linear_classifier(train_dataloader, test_dataloader, val_dataloader, i
     # tune the backbone
     backbone.eval()
     #define model loss and optimizer
-    classifier = LinearClassifier(input_features, num_classes)
+    classifier = LinearClassifier(input_features, num_classes).to(device)
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
     
@@ -134,7 +134,7 @@ def train(dataloader, model, loss_fn, optimizer, device='cpu'):
     num_batches = len(dataloader)
     train_loss, correct = 0, 0
     for batch, (X, y) in enumerate(dataloader):
-        print(batch)
+        # print(batch)
         X, y = X.to(device), y.to(device)
 
         # Compute prediction error

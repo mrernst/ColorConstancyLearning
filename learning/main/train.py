@@ -302,7 +302,8 @@ def train():
             else:
                 
                 if args.linear_nn:
-                    _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes, backbone=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
+                    _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, dataloader_val, 84, dataset_train_eval.n_classes, backbone=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
+                    
                     # in this linear classifier function also the confusion matrix and the wcss-bcss should be included, ideally in an iterative way. Then the lstsq_model only is needed for online testing
                     # also you need some testing here to actually see when learning converges
                     
