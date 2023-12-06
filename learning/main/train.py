@@ -129,7 +129,7 @@ def train():
                     )
     
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size,
-                                  num_workers=4, shuffle=True, drop_last=True)
+                                  num_workers=args.num_workers, shuffle=True, drop_last=True)
     
     dataset_train_eval = DATASETS[args.dataset]['class'](
         root=args.data_root,
@@ -138,7 +138,7 @@ def train():
         transform=val_transform,
         contrastive=False,
         )
-    dataloader_train_eval = DataLoader(dataset_train_eval, batch_size=args.batch_size, num_workers=0, shuffle=False)
+    dataloader_train_eval = DataLoader(dataset_train_eval, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     
     dataset_test = DATASETS[args.dataset]['class'](
         root=args.data_root,
@@ -146,7 +146,7 @@ def train():
         transform=val_transform,
         contrastive=False,
         )
-    dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, num_workers=0, shuffle=False)
+    dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
         
     if args.encoder == 'resnet18':

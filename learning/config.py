@@ -132,6 +132,9 @@ parser.set_defaults(save_model=False)
 
 
 # Hyperparameters
+parser.add_argument('--num_workers',
+                    default=4,
+                    type=int)
 parser.add_argument('--n_epochs',
                     default=100,
                     type=int)
