@@ -175,9 +175,11 @@ def train():
 
         if args.linear_nn:
             # linear encoder only on the test set?
-            _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
+            nn_loss, nn_acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
                                              model=net, epochs=200, global_epoch=0, test_every=1, writer=writer, device=device)
-                                             
+            writer.add_scalar('accloss/test/class/nn/accuracy', nn_acc, 0)
+            writer.add_scalar('accloss/test/class/nn/loss', nn_loss, 0)
+            
         # maybe we should do the evaluation in cpu space instead
         features_train_eval, labels_train_eval = get_representations(
             net, dataloader_train_eval, device=device)
@@ -277,9 +279,11 @@ def train():
             else:
 
                 if args.linear_nn:
-                    _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
-                                                     model=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
-
+                    nn_loss, nn_acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
+                                                     model=net, epochs=200, global_epoch=(epoch+1), test_every=1, writer=writer, device=device)
+                    writer.add_scalar('accloss/test/class/nn/accuracy', nn_acc, epoch + 1)
+                    writer.add_scalar('accloss/test/class/nn/loss', nn_loss, epoch + 1)
+                    
                     # in this linear classifier function also the confusion matrix and the wcss-bcss should be included, ideally in an iterative way. Then the lstsq_model only is needed for online testing
                     # also you need some testing here to actually see when learning converges
 
