@@ -135,10 +135,10 @@ def train_linear_classifier(train_dataloader, test_dataloader, input_features, n
                     description_string += f"/e{global_epoch}"
 
                 # log data to tensorboard writer
-                writer.add_scalar(description_string + f'/accloss/train/loss', training_loss, logged_epoch + 1)
-                writer.add_scalar(description_string + f'/accloss/test/loss', testing_loss, logged_epoch + 1)
-                writer.add_scalar(description_string + f'/accloss/train/accuracy', training_acc, logged_epoch + 1)
-                writer.add_scalar(description_string + f'/accloss/test/accuracy', testing_acc, logged_epoch + 1)
+                writer.add_scalar(description_string + f'/accloss/train/loss', training_loss, logged_epoch)
+                writer.add_scalar(description_string + f'/accloss/test/loss', testing_loss, logged_epoch)
+                writer.add_scalar(description_string + f'/accloss/train/accuracy', training_acc, logged_epoch)
+                writer.add_scalar(description_string + f'/accloss/test/accuracy', testing_acc, logged_epoch)
 
     model.train()
     return testing_loss, testing_acc
