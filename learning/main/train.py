@@ -73,8 +73,8 @@ REG_LOSS = {
 DATASETS = {
     'C3': {'class': SimpleTimeContrastiveDataset,
            'size': 15000,
-           'rgb_mean': (0.7709, 0.7642, 0.7470),  # need to calculate this
-           'rgb_std': (0.0835, 0.0842, 0.0840),
+           'rgb_mean': (0.3621, 0.3644, 0.3635),  # need to calculate this
+           'rgb_std': (0.1456, 0.1479, 0.1477),
            },
 }
 
