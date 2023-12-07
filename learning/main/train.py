@@ -176,7 +176,7 @@ def train():
         if args.linear_nn:
             # linear encoder only on the test set?
             _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
-                                             model=net, epochs=100, global_epoch=0, test_every=1, writer=writer, device=device)
+                                             model=net, epochs=200, global_epoch=0, test_every=1, writer=writer, device=device)
                                              
         # maybe we should do the evaluation in cpu space instead
         features_train_eval, labels_train_eval = get_representations(
@@ -278,7 +278,7 @@ def train():
 
                 if args.linear_nn:
                     _, acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
-                                                     model=net, epochs=100, global_epoch=epoch, test_every=1, writer=writer, device=device)
+                                                     model=net, epochs=200, global_epoch=epoch, test_every=1, writer=writer, device=device)
 
                     # in this linear classifier function also the confusion matrix and the wcss-bcss should be included, ideally in an iterative way. Then the lstsq_model only is needed for online testing
                     # also you need some testing here to actually see when learning converges
