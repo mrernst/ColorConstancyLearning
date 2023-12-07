@@ -172,18 +172,18 @@ def main(args):
 	
 	for scene_id in range(args.n_cubes):
 		for image_number in train_range:
-			destination_path = f'./dataset/C3/train/{scene_id}/'
-			origin_path = f'./dataset/images/{scene_id}/colors_{image_number}.png'
+			destination_path = f'./dataset/C3/train/{scene_id:04}/'
+			origin_path = f'./dataset/images/{scene_id:04}/{image_number:04}.png'
 			os.makedirs(os.path.dirname(destination_path), exist_ok=True)
 			shutil.copy2(origin_path, destination_path)
 		for image_number in val_range:
-			destination_path = f'./dataset/C3/val/{scene_id}/'
-			origin_path = f'./dataset/images/{scene_id}/colors_{image_number}.png'
+			destination_path = f'./dataset/C3/val/{scene_id:04}/'
+			origin_path = f'./dataset/images/{scene_id:04}/{image_number:04}.png'
 			os.makedirs(os.path.dirname(destination_path), exist_ok=True)
 			shutil.copy2(origin_path, destination_path)
 		for image_number in test_range:
-			destination_path = f'./dataset/C3/test/{scene_id}/'
-			origin_path = f'./dataset/images/{scene_id}/colors_{image_number}.png'
+			destination_path = f'./dataset/C3/test/{scene_id:04}/'
+			origin_path = f'./dataset/images/{scene_id:04}/{image_number:04}.png'
 			os.makedirs(os.path.dirname(destination_path), exist_ok=True)
 			shutil.copy2(origin_path, destination_path)
 	
