@@ -157,5 +157,6 @@ learning/main/save/*
 learning/save/*
 *.pdf
 generating/dataset/*
+generating/resources/*
 *.txt
 learning/data/*
