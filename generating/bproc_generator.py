@@ -87,7 +87,7 @@ def main(args):
 	#bproc.writer.write_hdf5(args.output_dir+"/images/"+str(args.scene_id)+"/", data)
 	# I think this is only sensible if we have multiple passes therefore we should rather export raw images and then maybe generate hdf5 shards later
 	for index, image in enumerate(data["colors"]):
-		destination_path = f"./dataset/images/{str(args.scene_id):04}/" # TODO: format this to be 0001
+		destination_path = f"./dataset/images/{int(args.scene_id):04}/" # TODO: format this to be 0001
 		os.makedirs(os.path.dirname(destination_path), exist_ok=True)
 		save_array_as_image(image, "colors", os.path.join(destination_path, f"{index:04}.png"))  # TODO: format this to be 0001
 
