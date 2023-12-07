@@ -176,7 +176,7 @@ def train():
         if args.linear_nn:
             # linear encoder only on the test set?
             nn_loss, nn_acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
-                                             model=net, epochs=200, global_epoch=0, test_every=1, writer=writer, device=device)
+                                             model=net, epochs=200, global_epoch=0, test_every=10, writer=writer, device=device)
             writer.add_scalar('accloss/test/class/nn/accuracy', nn_acc, 0)
             writer.add_scalar('accloss/test/class/nn/loss', nn_loss, 0)
             
@@ -280,7 +280,7 @@ def train():
 
                 if args.linear_nn:
                     nn_loss, nn_acc = train_linear_classifier(dataloader_train_eval, dataloader_test, 84, dataset_train_eval.n_classes,
-                                                     model=net, epochs=200, global_epoch=(epoch+1), test_every=1, writer=writer, device=device)
+                                                     model=net, epochs=200, global_epoch=(epoch+1), test_every=10, writer=writer, device=device)
                     writer.add_scalar('accloss/test/class/nn/accuracy', nn_acc, epoch + 1)
                     writer.add_scalar('accloss/test/class/nn/loss', nn_loss, epoch + 1)
                     
