@@ -12,9 +12,11 @@ import numpy as np
 import os, sys
 import pandas as pd
 import matplotlib.pyplot as plt
+import time
+
 
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
+from torchvision import transforms, utils, datasets
 from PIL import Image
 
 # utilities
@@ -295,7 +297,7 @@ class C3Dataset(TimeContrastiveDataset):
         # basic properties (need to be there)
         self.n_objects = 50  # number of different objects >= n_classes
         self.n_classes = 50  # number of different classes
-        self.labels = [str(c) for c in range(0,self.n_classes)]
+        self.classes = [str(c) for c in range(0,self.n_classes)]
         self.n_views_per_object = 300 # how many overall views of each object #TODO: this should be 1000 or more
         self.subdirectory = '/C3/' # where is the dataset
         self.name = 'ColorConstancyCubes' # name of the dataset
@@ -337,18 +339,18 @@ class C3Dataset(TimeContrastiveDataset):
             # read in additional label data for lights and intensities
             # represent intensities as 8D vector
             # represent lights as RGB * light number 3*8=24 one-hot encoding
-            light_colors = np.loadtxt(self.root + self.subdirectory +"/labels/" + f"light_colors_{object}.txt", dtype=str)
+            light_colors = np.loadtxt(self.root + self.subdirectory +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
             
             light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
             
-            light_powers = np.loadtxt(self.root+self.subdirectory +"/labels/" + f"light_powers_{object}.txt")
+            light_powers = np.loadtxt(self.root+self.subdirectory +"/labels/" + f"light_powers_{int(object)}.txt")
             
             
             list_of_files = os.listdir(os.path.join(d, object))
             list_of_files.sort(key=lambda x: int((x.split('_')[-1].split('.')[0])))
             for timestep, path in enumerate(list_of_files):
                 full_path = os.path.join(d, object, path)
-                img_id = int((full_path.split('_')[-1].split('.')[0]))
+                img_id = int((full_path.split('/')[-1].split('.')[0]))
                 if os.path.isfile(full_path):
                     path_list.append(full_path)
                     object_list.append(i)
@@ -374,13 +376,108 @@ class C3Dataset(TimeContrastiveDataset):
 # TODO: add a C3 neutral dataset that uses a simulated buffer again, just build the registry by copying all entries a number of times so we can compare with the regular dataset
 
 
+
+
+class SimpleTimeContrastiveDataset(datasets.ImageFolder):
+    # TODO: Rewrite this class from the ground up. I want this to be way more pythonic and use a predefined dict instead of anything else that always gives out the same pair instead of sampling for simplicity and fastness sake. Inherit from ImageFolder directly
+    def __init__(
+        self,
+        root,
+        contrastive,
+        extensions = None,
+        transform = None,
+        target_transform = None,
+        is_valid_file = None,
+    ) -> None:
+    
+        super().__init__(root, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file)
+        # samples needs to be sorted first and the rotation needs to happen per object
+        self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
+        self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
+        # on a per object basis one could also make a definite list  l[1:] + l[-2:-1]
+        self.contrastive = contrastive
+        self.n_classes = len(self.classes)
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+        
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        
+
+
+        if self.contrastive:
+            # get contrast and check whether it is okay iff we sample contrasts
+            if np.random.random() > 0.5:
+                path2, target2 = self.samples_shifted_plus_one[index]
+                if target2 != target:
+                   path2, target2 = self.samples_shifted_minus_one[index]
+            else:
+                path2, target2 = self.samples_shifted_minus_one[index]
+                if target2 != target:
+                   path2, target2 = self.samples_shifted_plus_one[index]
+            
+            # path2, target2 = self.samples_shifted_plus_one[index]
+            # if target2 != target:
+            #    path2, target2 = self.samples_shifted_minus_one[index]
+            sample = self.loader(path)
+            augmentation = self.loader(path2)
+            if self.transform is not None:
+                sample = self.transform(sample)
+                augmentation = self.transform(augmentation)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+        
+            output = ([sample, augmentation], target)
+        else:
+            sample = self.loader(path)
+            if self.transform is not None:
+                sample = self.transform(sample)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+            
+            output =  sample, target
+
+        return output
+    
+    def __len__(self) -> int:
+        return len(self.samples)
+
 # ----------------
 # main program
 # ----------------
 
 if __name__ == "__main__":
     
-    # CORE50 Dataset
+    
+    
+    dataset = SimpleTimeContrastiveDataset(
+        root='../data/C3/train/',
+        transform=transforms.ToTensor(),
+        contrastive=True,
+    )
+    
+    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+    for ibatch, sample_batched in enumerate(dataloader):
+        #print(ibatch)
+        #print(sample_batched[0][0].shape)
+    
+        show_batch(sample_batched)
+        if ibatch == 4:
+            break
+    
+    start = time.time()
+    for ibatch, sample_batched in enumerate(dataloader):
+        pass
+    end = time.time()
+    print(f"SimpleTimeContrastive: {end - start}")
+    # this is already 3x faster
+
+    
+    # C3 Dataset
     # -----
     
     dataset = C3Dataset(
@@ -393,16 +490,40 @@ if __name__ == "__main__":
     # original timeseries
     dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
     for ibatch, sample_batched in enumerate(dataloader):
-        print(ibatch)
-        print(sample_batched[0][0].shape)
+        #print(ibatch)
+        #print(sample_batched[0][0].shape)
 
         show_batch(sample_batched)
         if ibatch == 4:
             break
     
-
-    sys.exit()
-
+    start = time.time()
+    for ibatch, sample_batched in enumerate(dataloader):
+        pass
+    end = time.time()
+    print(f"TimeContrastive: {end - start}")
+    
+    
+    
+    
+    
+    features = []
+    labels = []
+    for data_samples, data_labels in dataloader:   
+        features.append(data_samples[0])
+        labels.append(data_labels)
+    features = torch.cat(features, 0)
+    labels = torch.cat(labels, 0)
+    
+    features = features.reshape(features.shape[0], -1)
+    labels = labels.reshape(labels.shape[0], -1)
+ 
+    
+    pacmap_plot = get_pacmap(
+    features, labels, 0, dataset.n_classes, dataset.classes)
+    #sys.exit()
+    
+    plt.show()
 #  _____________________________________________________________________________
 
 # Stick to 80 characters per line

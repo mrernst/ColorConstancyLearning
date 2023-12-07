@@ -14,22 +14,47 @@ import pacmap
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.cm import get_cmap
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, hsv_to_rgb
+
 import seaborn as sns
 import numpy as np
 from tqdm import tqdm
 
 from utils.visualization import ConfusionMatrix
 from utils.networks import LinearClassifier, SplitOutput
+
+
 # custom functions
 # -----
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+    
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+
+
 @torch.no_grad()
-def get_representations(model, data_loader, device='cpu'):
+def get_representations(model, dataloader, device='cpu'):
     """
     Get all representations of the dataset given the network and the data loader
     params:
         model: the network to be used (torch.nn.Module)
-        data_loader: data loader of the dataset (DataLoader)
+        dataloader: data loader of the dataset (DataLoader)
+        device: the computing device (str)
     return:
         representations: representations output by the network (Tensor)
         labels: labels of the original data (LongTensor)
@@ -37,9 +62,9 @@ def get_representations(model, data_loader, device='cpu'):
     model.eval()
     features = []
     labels = []
-    for data_samples, data_labels in data_loader:      
-        features.append(model(data_samples.to(device))[0])
-        labels.append(data_labels.to(device))
+    for data_samples, data_labels in dataloader:      
+        features.append(model(data_samples.to(device))[0].detach().cpu())
+        labels.append(data_labels.cpu())
     features = torch.cat(features, 0)
     labels = torch.cat(labels, 0)
     return features, labels
@@ -78,6 +103,9 @@ def lls_eval(trained_lstsq_model, eval_features, eval_labels):
 
 
 def train_linear_classifier(train_dataloader, test_dataloader, input_features, num_classes, model, epochs=200, global_epoch=0, test_every=1, writer=None, device='cpu'):
+    """
+    
+    """
     print(f'[INFO:] Starting linear evaluation with Neural Network at epoch {global_epoch}')
     #define model loss and optimizer
     classifier = LinearClassifier(input_features, num_classes).to(device)
@@ -149,7 +177,7 @@ def train(dataloader, model, classifier, loss_fn, optimizer, device='cpu'):
     return train_loss, correct
         
         
-        
+@torch.no_grad()   
 def test(dataloader, model, classifier, loss_fn, cm=None, device='cpu'):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -171,24 +199,7 @@ def test(dataloader, model, classifier, loss_fn, cm=None, device='cpu'):
 
 
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self):
-        self.reset()
-    
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-    
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-
+@torch.no_grad()
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the
     specified values of k"""
@@ -234,11 +245,12 @@ def supervised_eval(model, dataloader, criterion, no_classes, device='cpu'):
         # update confusion matrix
         confusion_matrix.update(output.cpu(), labels.cpu())
         
-    print('Test: [{0}/{1}]\t'
+    print('\nTest: [{0}/{1}]\t'
           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
           'Acc@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-              idx, len(dataloader),
+              idx+1, len(dataloader),
               loss=losses, top1=top1))
+    # TODO: change these misleading statistics
         
     return top1.avg, losses.avg, confusion_matrix
     
@@ -318,6 +330,11 @@ def get_pacmap(representations, labels, epoch, n_classes, class_labels):
     sns.set_context('paper', font_scale=1.8, rc={'lines.linewidth': 2})
     # color_map = get_cmap('viridis')
     color_map = ListedColormap(sns.color_palette('colorblind', 50))
+    
+    
+    hsl_colors = [(i * (360 / n_classes), 50, 100) for i in range(n_classes)]
+    color_map = ListedColormap([hsv_to_rgb((hsl[0] / 360, hsl[1] / 100, hsl[2] / 100)) for hsl in hsl_colors])
+    
     #legend_patches = [Patch(color=color_map(i / n_classes), label=label) for i, label in enumerate(class_labels)]
     legend_patches = [Patch(color=color_map(i), label=label) for i, label in enumerate(class_labels)]
     # save the visualization result
@@ -328,9 +345,11 @@ def get_pacmap(representations, labels, epoch, n_classes, class_labels):
     ax.scatter(X_transformed[:, 0], X_transformed[:, 1], c=color_map(labels), s=0.6)
     ax.set_title('Pacmap Plot')
     plt.xticks([]), plt.yticks([])
+    # Shrink current axis by 20%
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width*0.8, box.height])
-    ax.legend(loc='upper left', bbox_to_anchor=(1., 1.), handles=legend_patches, fontsize=13.8)
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='upper left', bbox_to_anchor=(1., 1.), handles=legend_patches, fontsize=8, ncol=2)
+    #legend(loc=2, prop={'size': 6})
     # ax.text(-0.15, 1.05, 'C', transform=ax.transAxes, size=30, weight='medium')
     plt.xlabel(f'Epoch: {epoch}')
     return fig
@@ -345,78 +364,6 @@ def cosine_similarity(p_vec, q_vec):
     return np.dot(p_vec, q_vec) / (np.linalg.norm(p_vec) * np.linalg.norm(q_vec))
 
 
-@torch.no_grad()
-def get_neighbor_similarity(representations, labels, epoch, sim_func=cosine_similarity):
-    """
-        Draw a similarity plot
-        params:
-            representations: the representations to be evaluated (Tensor)
-            labels: labels of the original data (LongTensor)
-            epoch: epoch (int)
-            sim_func: similarity function with two parameters
-        return:
-            fig: similarity plot (matplotlib.figure.Figure)
-    """
-
-    unique_labels = torch.unique(labels)
-
-    if len(labels) != len(unique_labels):
-        # calculate the mean over representations
-        rep_centroid = torch.zeros([len(unique_labels), representations.shape[-1]])
-        for i in range(len(unique_labels)):
-            rep_centroid[i] = representations[torch.where(labels == i)[0]].mean(0)
-
-        list_of_indices = np.arange(len(unique_labels))
-        labels = list_of_indices
-        representations = rep_centroid
-        n_samples_per_object = 1
-
-    else:
-        list_of_indices = np.arange(len(labels))
-        n_samples_per_object = 1
-
-    distances = np.zeros([len(unique_labels), len(unique_labels)])
-
-    # Fill a distance matrix that relates every representation of the batch
-    for i in list_of_indices:
-        for j in list_of_indices:
-            distances[labels[i], labels[j]] += sim_func(representations[i].cpu(), representations[j].cpu())
-            # distances[labels[i], labels[j]] += 1
-
-    distances /= n_samples_per_object ** 2  # get the mean distances between representations
-
-    # get some basic statistics
-    # print('[INFO:] distance', distances.max(), distances.min(), distances.std())
-
-    # duplicate the matrix such that you don't get to the edges when
-    # gathering distances
-    distances = np.hstack([distances, distances, distances])
-    # plt.matshow(distances)
-    # plt.show()
-
-    # how many neighbors do you want to show (n_neighbors = n_classes for sanity check, you would have to see a global symmetry)
-    n_neighbors = len(unique_labels)
-    topk_dist_plus = np.zeros([len(labels), n_neighbors])
-    topk_dist_minus = np.zeros([len(labels), n_neighbors])
-
-    for k in range(n_neighbors):
-        for i in range(len(unique_labels)):
-            topk_dist_plus[i, k] += distances[i, i + len(unique_labels) + k]
-            topk_dist_minus[i, k] += distances[i, i + len(unique_labels) - k]
-
-    topk_dist = np.vstack([topk_dist_plus, topk_dist_minus])
-
-    fig, ax = plt.subplots()
-    ax.errorbar(np.arange(0, n_neighbors), topk_dist.mean(0), marker='.', markersize=10, xerr=None,
-                yerr=topk_dist.std(0))
-    ax.set_title('representation similarity')
-    ax.set_xlabel('nth neighbour')
-    ax.set_ylabel('cosine similarity')
-    ax.set_ylim(-1.1, 1.1)
-    ax.hlines(topk_dist.mean(0)[n_neighbors // 2:].mean(), -100, 100, color='gray', linestyle='--')
-    ax.set_xlim(-2, n_neighbors + 2)
-
-    return fig
 
 # _____________________________________________________________________________
 
