@@ -29,9 +29,6 @@ parser.add_argument('--name',
 parser.add_argument("--seed",
                     type=int,
                     default=0)
-parser.add_argument('--n_repeat',
-                    default=5,
-                    type=int)
 parser.add_argument('--log_dir',
                     default='save',
                     type=str)
@@ -95,6 +92,12 @@ parser.add_argument('--no-linear_nn',
                     dest='linear_nn',
                     action='store_false')
 parser.set_defaults(linear_nn=False)
+parser.add_argument('--linear_nn_epochs',
+                    default=200,
+                    type=int)
+parser.add_argument('--linear_nn_test_every',
+                    default=10,
+                    type=int)
 
 parser.add_argument('--projectionhead',
                     dest='projectionhead',
