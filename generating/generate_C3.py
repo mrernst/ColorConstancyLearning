@@ -10,6 +10,8 @@ import shutil
 
 def main(args):
 	
+	np.random.seed(12345)
+	
 	if not args.use_existing_resources:
 		# 1. sample cube colors (this may happen only once, however it happens so fast that we can also repeat this)
 		cube_rgb_colors = []
