@@ -23,15 +23,15 @@ import torch
 # custom classes
 # -----
 
-class RELIC_TT_Loss(nn.Module):
+class RELIC_Loss(nn.Module):
     """
         RELIC loss which minimizes similarities the same between the anchor and different views of other samples,
             i.e. x and its pair x_pair
     """
 
     def __init__(self, sim_func):
-        """Initialize the RELIC_TT_Loss class"""
-        super(RELIC_TT_Loss, self).__init__()
+        """Initialize the RELIC_Loss class"""
+        super(RELIC_Loss, self).__init__()
         self.sim_func = sim_func
 
 
@@ -48,14 +48,14 @@ class RELIC_TT_Loss(nn.Module):
         return loss
 
 
-class Decorrelation_TT_Loss(nn.Module):
+class Decorrelation_Loss(nn.Module):
     """
         De-correlation loss that minimize every entry of Pearson's correlation matrix except the diagonal entries
     """
 
-    def __init__(self, dim, device):
-        """Initialize the SimCLR_TT_Loss class"""
-        super(Decorrelation_TT_Loss, self).__init__()
+    def __init__(self, dim):
+        """Initialize the SimCLR_Loss class"""
+        super(Decorrelation_Loss, self).__init__()
         # mask for decorrelation loss that rules out the trace entries
         #self.MASK_DECOR = 1 - torch.eye(dim).to(device)
 
@@ -75,10 +75,10 @@ class Decorrelation_TT_Loss(nn.Module):
         return loss
 
 
-class SimCLR_TT_Loss(nn.Module):
-    def __init__(self, sim_func, batch_size, temperature, device='cpu'):
-        """Initialize the SimCLR_TT_Loss class"""
-        super(SimCLR_TT_Loss, self).__init__()
+class SimCLR_Loss(nn.Module):
+    def __init__(self, sim_func, batch_size, temperature):
+        """Initialize the SimCLR_Loss class"""
+        super(SimCLR_Loss, self).__init__()
 
         self.batch_size = batch_size
         self.temperature = temperature
@@ -86,7 +86,6 @@ class SimCLR_TT_Loss(nn.Module):
         self.mask = self.mask_correlated_samples(batch_size)
         self.criterion = nn.CrossEntropyLoss(reduction="sum")
         self.sim_func = sim_func
-        self.device = device
 
     def mask_correlated_samples(self, batch_size):
         """
@@ -125,35 +124,35 @@ class SimCLR_TT_Loss(nn.Module):
         # we take all of the negative samples
         negative_samples = sim[self.mask].reshape(N, -1)
 
-        if False: #args.n_negative:
-            # if we specify N negative samples: do random permutation of negative sample losses,
-            # such that we do consider different positions in the batch
-            negative_samples = torch.take_along_dim(
-                negative_samples, torch.rand(*negative_samples.shape, device=self.device).argsort(dim=1), dim=1)
-            # cut off array to only consider N_negative samples per positive pair
-            negative_samples = negative_samples[:, :args.n_negative]
-            # so what we are doing here is basically using the batch to sample N negative
-            # samples.
+        # if False: #args.n_negative:
+        #     # if we specify N negative samples: do random permutation of negative sample losses,
+        #     # such that we do consider different positions in the batch
+        #     negative_samples = torch.take_along_dim(
+        #         negative_samples, torch.rand(*negative_samples.shape, device=self.device).argsort(dim=1), dim=1)
+        #     # cut off array to only consider N_negative samples per positive pair
+        #     negative_samples = negative_samples[:, :args.n_negative]
+        #     # so what we are doing here is basically using the batch to sample N negative
+        #     # samples.
 
         # the following is more or less a trick to reuse the cross-entropy function for the loss
         # Think of the loss as a multi-class problem and the label is 0
         # such that only the positive similarities are picked for the numerator
         # and everything else is picked for the denominator in cross-entropy
-        labels = torch.zeros(N).to(self.device).long()
         logits = torch.cat((positive_samples, negative_samples), dim=1)
+        labels = torch.zeros(N).to(logits.device).long()
         loss = self.criterion(logits, labels)
         loss /= N
 
         return loss
 
-class VICReg_TT_Loss(nn.Module):
+class VICReg_Loss(nn.Module):
     """
         Taken and slightly modified from the official implementation at facebookresearch/vicreg at https://github.com/facebookresearch/vicreg/
     """
     
     def __init__(self):
-        """Initialize the SimCLR_TT_Loss class"""
-        super(VICReg_TT_Loss, self).__init__()
+        """Initialize the VICReg_Loss class"""
+        super(VICReg_Loss, self).__init__()
         #self.args=args
         self.positive_samples, self.negatives_only, self.no_exp_log_prob, self.lower_tmp, self.higher_tmp, self.feedback = None, None, None, None, None, None
     

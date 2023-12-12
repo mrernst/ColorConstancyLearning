@@ -13,39 +13,98 @@ import torch
 
 # configuration module
 # -----
-#import config
 import json
+
+# custom classes
+# -----
+
+class DotDict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+    
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+class AnalogueLogger(object):
+    pass
+    
+    
+class TwoContrastTransform:
+    """
+    Create two contrasts of the same image using the given
+    torchvision transform
+    """
+    def __init__(self, transform):
+        self.transform = transform
+    
+    def __call__(self, x):
+        return [self.transform(x), self.transform(x)]
+
 
 # custom functions
 # -----
 
-
-def save_model(net, writer, epoch):
-    """
-        function used to save model parameters to the log directory
-            net: network to be saved
-            writer: summary writer to get the log directory
-            epoch: epoch indicator
+def save_model(model, writer, epoch, model_name=''):
+    """ Save model parameters.
+    Args:
+        model:
+            network to be saved
+        writer:
+            tensorboard summary writer to get the log directory
+        epoch:
+            current epoch represented by an integer
     """
     log_dir = writer.get_logdir()
     path = os.path.join(log_dir, 'models')
     if not os.path.exists(path):
         os.mkdir(path)
-    torch.save(net.state_dict(), os.path.join(path, f'epoch_{epoch}.pt'))
+    torch.save(model.state_dict(), os.path.join(path, f'{model_name}_epoch_{epoch}.pt'))
 
 
-def load_model(net, path, device):
-    """
-        function used to load model parameters to the log directory
-            net: network to load the parameters
-            path: path to the saved model state dict
+def load_model(model, path, device):
+    """ Load model parameters.
+    
+    Args:
+        model:
+            network to load the parameters.
+        path:
+            path to the saved model state dict represented by a
+            string object.
+        device:
+            the device you want to load the model onto,
+            represented by a string object
     """
     
-    net.load_state_dict(torch.load(path, map_location=device))
+    model.load_state_dict(torch.load(path, map_location=device))
     pass
 
 
-def save_args(results_dir, args):
+def save_args(path, args):
+    """Save command line arguments to json file.
+    
+    Args:
+        path: Filepath to the desired output directory represented by a string.
+        args: parser.args object.
+    """
     filename = 'args.json'
     # Save args
     l = []
@@ -54,8 +113,9 @@ def save_args(results_dir, args):
         l.append(args[a].items())
       except:
         l.append((a,args[a]))
-    with open(os.path.join(results_dir, filename), 'w') as f:
+    with open(os.path.join(path, filename), 'w') as f:
         json.dump(l, f, indent=2)
+    
     pass
 
 # _____________________________________________________________________________

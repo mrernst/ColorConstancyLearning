@@ -10,6 +10,7 @@
 import torchvision.models as models
 from torch import nn
 
+from utils.general import DotDict
 
 # configuration module
 # ------
@@ -84,7 +85,7 @@ class LeNet5(nn.Module):
         
         self.projector = MLPHead(84, args.hidden_dim, args.feature_dim)
         self.linear_out = nn.Linear(84, num_classes)
-
+        
         
     def forward(self, x):
         representation = self.encoder(x)
@@ -97,6 +98,13 @@ class LeNet5(nn.Module):
             projection = representation
         
         return representation, projection
+    
+    def get_internal_representations(self, x):
+        return_dict = DotDict({
+            'l1': self.layer1(x),
+            'l2':self.layer2(self.layer1(x)),
+        })
+        return return_dict
 
 
 class AlexNet(nn.Module):
@@ -162,42 +170,52 @@ class AlexNet(nn.Module):
             projection = representation
         
         return representation, projection
+    
+    def get_internal_representations(self, x):
+        return_dict = DotDict({
+            'l1': self.layer1(x),
+            'l2': self.layer2(self.layer1(x)),
+            'l3': self.layer3(self.layer2(self.layer1(x))),
+            'l4': self.layer4(self.layer3(self.layer2(self.layer1(x)))),
+            'l5': self.layer5(self.layer4(self.layer3(self.layer2(self.layer1(x))))),
+        })
+        return return_dict
 
 class SplitOutput(nn.Module):
     def __init__(self, return_split=0):
-       super().__init__()
-       self.return_split = return_split
+        super().__init__()
+        self.return_split = return_split
     
     def forward(self,x):
         return x[self.return_split]
 
 class LinearClassifier(nn.Module):
-   def __init__(self, num_features=128, num_classes=50):
-       super().__init__()
-       self.linear_out = nn.Sequential(
+    def __init__(self, num_features=128, num_classes=50):
+        super().__init__()
+        self.linear_out = nn.Sequential(
            nn.Flatten(),
            nn.Linear(num_features, num_classes),
-           #nn.ReLU(),
-       )   
+           #nn.ReLU(), # TODO: look up if these linear evaluation networks have an activation function at the end
+        )   
        
-   def forward(self, x):
-       pred = self.linear_out(x)
-       return pred
+    def forward(self, x):
+        pred = self.linear_out(x)
+        return pred
 
 
 class MLPHead(nn.Module):
-        def __init__(self, in_channels, mlp_hidden_size, projection_size):
-            super(MLPHead, self).__init__()
-        
-            self.net = nn.Sequential(
-                nn.Linear(in_channels, mlp_hidden_size),
-                nn.BatchNorm1d(mlp_hidden_size),
-                nn.ReLU(inplace=True),
-                nn.Linear(mlp_hidden_size, projection_size)
-            )
-        
-        def forward(self, x):
-            return self.net(x)
+    def __init__(self, in_channels, mlp_hidden_size, projection_size):
+        super(MLPHead, self).__init__()
+    
+        self.net = nn.Sequential(
+            nn.Linear(in_channels, mlp_hidden_size),
+            nn.BatchNorm1d(mlp_hidden_size),
+            nn.ReLU(inplace=True),
+            nn.Linear(mlp_hidden_size, projection_size)
+        )
+    
+    def forward(self, x):
+        return self.net(x)
 
 
 #[channels, kernel size, stride, padding] structure: [64, 8, 4, 2], [128, 4, 2, 1], [256, 2, 2, 1], [256, 2, 2, 1]. These are followed by an average pooling layer and a linear layer ending with $20$ units

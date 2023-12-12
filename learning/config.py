@@ -67,7 +67,12 @@ parser.add_argument('--data_root',
                     help='Folder where the dataset is located',
                     default='data', type=str)
 
-
+parser.add_argument('--lr_decay_epochs',
+                      type=list, action='store',
+                      dest='lr_decay_epochs',
+                      help='epochs where learning rate decays',
+                      default=[0],)
+ 
 # Network Configuration
 parser.add_argument('--encoder', help='Network backbone',
                     default='LeNet5',
@@ -107,22 +112,23 @@ parser.add_argument('--no-projectionhead',
                     action='store_false')
 parser.set_defaults(projectionhead=True)
 
-# parser.add_argument('--exhaustive_test',
-#                     dest='exhaustive_test',
-#                     action='store_true')
-# parser.add_argument('--no-exhaustive_test',
-#                     dest='exhaustive_test',
-#                     action='store_false')
-# parser.set_defaults(exhaustive_test=False)
 
-
-parser.add_argument('--save_model',
-                    dest='save_model',
+parser.add_argument('--verbose',
+                    dest='verbose',
                     action='store_true')
-parser.add_argument('--no-save_model',
-                    dest='save_model',
+parser.add_argument('--no-verbose',
+                    dest='verbose',
                     action='store_false')
-parser.set_defaults(save_model=True)
+parser.set_defaults(verbose=True)
+
+
+# parser.add_argument('--save_model',
+#                     dest='save_model',
+#                     action='store_true')
+# parser.add_argument('--no-save_model',
+#                     dest='save_model',
+#                     action='store_false')
+# parser.set_defaults(save_model=True)
 
 parser.add_argument('--save_embedding',
                     dest='save_embedding',
@@ -130,7 +136,7 @@ parser.add_argument('--save_embedding',
 parser.add_argument('--no-save_embedding',
                     dest='save_embedding',
                     action='store_false')
-parser.set_defaults(save_model=False)
+parser.set_defaults(save_embedding=False)
                     
 
 

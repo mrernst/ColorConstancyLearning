@@ -397,6 +397,15 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         # on a per object basis one could also make a definite list  l[1:] + l[-2:-1]
         self.contrastive = contrastive
         self.n_classes = len(self.classes)
+        # load additional label information, i.e. lighting and light color
+        self.load_additional_labels()
+    
+    def load_additional_labels(self):
+        pass
+    
+    # TODO: write a relabel_by method as a setter and getter similar to what we
+    # had at CORe50
+    
     def __getitem__(self, index: int):
         """
         Args:
@@ -407,7 +416,6 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         """
         path, target = self.samples[index]
         
-
 
         if self.contrastive:
             # get contrast and check whether it is okay iff we sample contrasts

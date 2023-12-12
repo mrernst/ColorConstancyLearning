@@ -252,6 +252,13 @@ class PrecisionRecall(object):
 
         #writer.close()
 
+class PacMap(object):
+    # TODO: write pacmap class instead of get_pacmap function
+    # __init__
+    # calculate
+    # to_figure
+    # to_tensorboard
+    pass
 
 # ----------------
 # main program
