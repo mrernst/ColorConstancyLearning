@@ -164,7 +164,8 @@ def get_optimizer(model, args):
 	return optimizer
 
 
-# TODO: convert this into a Loss class with a method get_loss
+# TODO: convert this into a Loss class with a method get_loss to avoid
+# reloading the dicts every time this function is called
 def get_loss(projection:torch.Tensor, pair:torch.Tensor, label:torch.Tensor, args):
 	
 	sim_func_dict = {
