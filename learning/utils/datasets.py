@@ -415,11 +415,11 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
             # read in additional label data for lights and intensities
             # represent intensities as 8D vector
             # represent lights as RGB * light number 3*8=24 one-hot encoding
-            light_colors = np.loadtxt(self.root.rsplit('/', 2)[0] +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
+            light_colors = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
             
             light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
             
-            light_powers = np.loadtxt(self.root.rsplit('/', 2)[0] +"/labels/" + f"light_powers_{int(object)}.txt")
+            light_powers = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_powers_{int(object)}.txt")
             
             light_colors_dict[int(object)] = light_colors
             light_powers_dict[int(object)] = light_powers
