@@ -399,12 +399,65 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         self.n_classes = len(self.classes)
         # load additional label information, i.e. lighting and light color
         self.load_additional_labels()
+        self._label_by = 'object'
+
     
     def load_additional_labels(self):
+        # have an ordered list
+        list_of_objects = os.listdir(self.root)
+        list_of_objects.sort(key=lambda x: int(x))
+        
+        light_colors_dict = {}
+        light_powers_dict = {}
+        
+        for object in list_of_objects:
+            
+            # read in additional label data for lights and intensities
+            # represent intensities as 8D vector
+            # represent lights as RGB * light number 3*8=24 one-hot encoding
+            light_colors = np.loadtxt(self.root.rsplit('/', 2)[0] +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
+            
+            light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
+            
+            light_powers = np.loadtxt(self.root.rsplit('/', 2)[0] +"/labels/" + f"light_powers_{int(object)}.txt")
+            
+            light_colors_dict[int(object)] = light_colors
+            light_powers_dict[int(object)] = light_powers
+            
+        self.color_labels = []
+        self.power_labels = []
+        self.object_labels = []
+        for full_path, label in self.samples:
+            img_id = int((full_path.split('/')[-1].split('.')[0]))
+            self.color_labels.append([light_colors_dict[label][img_id]])
+            self.power_labels.append(light_powers_dict[label][img_id])
+            self.object_labels.append(label)
+        
         pass
     
-    # TODO: write a relabel_by method as a setter and getter similar to what we
-    # had at CORe50
+    @property
+    def label_by(self):
+        return self._label_by
+    
+    @label_by.setter
+    def label_by(self, l):
+        assert l in ['object', 'color', 'power']        
+        self._label_by = l
+        if l =='color':
+            self.n_classes = 18 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(18)]
+            # redo samples samples + 1 and samples - 1
+            
+            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples],self.color_labels)]
+        elif l == 'power':
+            self.n_classes = 6 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(6)]
+            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples],self.power_labels)]
+        else:
+            self.n_classes = 50
+            self.classes = [f'{i}' for i in range(50)]
+            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples],self.object_labels)]
+        
     
     def __getitem__(self, index: int):
         """
@@ -477,6 +530,8 @@ if __name__ == "__main__":
         if ibatch == 4:
             break
     
+    
+    
     start = time.time()
     for ibatch, sample_batched in enumerate(dataloader):
         pass
@@ -487,55 +542,55 @@ if __name__ == "__main__":
     
     # C3 Dataset
     # -----
-    
-    dataset = C3Dataset(
-        root='../data',
-        split='train',
-        transform=transforms.ToTensor(),
-        contrastive=True,
-    )
-    
-    # original timeseries
-    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
-    for ibatch, sample_batched in enumerate(dataloader):
-        #print(ibatch)
-        #print(sample_batched[0][0].shape)
-
-        show_batch(sample_batched)
-        if ibatch == 4:
-            break
-    
-    start = time.time()
-    for ibatch, sample_batched in enumerate(dataloader):
-        pass
-    end = time.time()
-    print(f"TimeContrastive: {end - start}")
-    
-    
-    
-    
-    
-    # ---
-    
-    
-    
-    features = []
-    labels = []
-    for data_samples, data_labels in dataloader:   
-        features.append(data_samples[0])
-        labels.append(data_labels)
-    features = torch.cat(features, 0)
-    labels = torch.cat(labels, 0)
-    
-    features = features.reshape(features.shape[0], -1)
-    labels = labels.reshape(labels.shape[0], -1)
- 
-    
-    pacmap_plot = get_pacmap(
-    features, labels, 0, dataset.n_classes, dataset.classes)
-    #sys.exit()
-    
-    plt.show()
+#     
+#     dataset = C3Dataset(
+#         root='../data',
+#         split='train',
+#         transform=transforms.ToTensor(),
+#         contrastive=True,
+#     )
+#     
+#     # original timeseries
+#     dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+#     for ibatch, sample_batched in enumerate(dataloader):
+#         #print(ibatch)
+#         #print(sample_batched[0][0].shape)
+# 
+#         show_batch(sample_batched)
+#         if ibatch == 4:
+#             break
+#     
+#     start = time.time()
+#     for ibatch, sample_batched in enumerate(dataloader):
+#         pass
+#     end = time.time()
+#     print(f"TimeContrastive: {end - start}")
+#     
+#     
+#     
+#     
+#     
+#     # ---
+#     
+#     
+#     
+#     features = []
+#     labels = []
+#     for data_samples, data_labels in dataloader:   
+#         features.append(data_samples[0])
+#         labels.append(data_labels)
+#     features = torch.cat(features, 0)
+#     labels = torch.cat(labels, 0)
+#     
+#     features = features.reshape(features.shape[0], -1)
+#     labels = labels.reshape(labels.shape[0], -1)
+#  
+#     
+#     pacmap_plot = get_pacmap(
+#     features, labels, 0, dataset.n_classes, dataset.classes)
+#     #sys.exit()
+#     
+#     plt.show()
 #  _____________________________________________________________________________
 
 # Stick to 80 characters per line
