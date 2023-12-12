@@ -12,6 +12,15 @@ directory =  os.path.dirname(os.path.realpath(__file__)) # os.path.dirname(file_
 print(file_path)
 print(directory)
 
+# remove the default cube
+try:
+	cube = bpy.data.objects['Cube']
+	bpy.data.objects.remove(cube, do_unlink=True)
+except:
+	print("Object bpy.data.objects['Cube'] not found")
+
+bpy.ops.outliner.orphans_purge()
+
 ### FLOOR
 
 floor_verts = [

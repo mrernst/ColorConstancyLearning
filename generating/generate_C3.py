@@ -145,8 +145,8 @@ def main(args):
 			
 		
 		# 3. build object files
-		#bashCommand = f"blenderproc run export_objects.py" 
-		#os.system(bashCommand) #technically also only needs to be done once
+		bashCommand = f"blenderproc run export_objects.py" 
+		os.system(bashCommand) #technically also only needs to be done once
 	else:
 		pass
 			
