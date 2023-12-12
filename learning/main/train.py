@@ -36,7 +36,7 @@ np.random.seed(args.seed)
 # -----
 from utils.general import save_model, load_model, save_args, AverageMeter, DotDict
 from utils.configurator import get_augmentations, get_dataloaders, get_network, get_optimizer, get_scheduler, update_lr, get_loss
-from utils.evaluation import fuse_representations, lls_fit, lls_eval, supervised_eval, knn_eval, log_knn_acc, wcss_bcss, get_pacmap, train_linear_classifier, evaluate, log_to_tensorboard
+from utils.evaluation import fuse_representations, lls_fit, lls_eval, supervised_eval, knn_eval, wcss_bcss, get_pacmap, train_linear_classifier, evaluate, log_to_tensorboard
 from utils.visualization import ConfusionMatrix
 #from PIL import Image, ImageFile
 #ImageFile.LOAD_TRUNCATED_IMAGES = True
