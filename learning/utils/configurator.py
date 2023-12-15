@@ -61,6 +61,8 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 			normalize,
 		])
 	
+	test_transform = val_transform
+	
 	if contrast_type == 'classic':
 		# if classic use the TwoContrastTransform to create contrasts
 		train_transform = TwoContrastTransform(train_transform)
@@ -71,6 +73,15 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 		# train_transform, val_transform = v2.ToImage(), v2.ToDtype(torch.float32, scale=True), v2.ToTensor()
 	elif contrast_type == 'nocontrast':
 		train_transform = TwoContrastTransform(val_transform)
+	elif contrast_type == 'jitter':
+		# TODO: hyperparameter tuning for the hue jitter variable
+		train_transform = v2.Compose([
+			v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s), #0.2*s is default
+			v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
+			normalize,
+		])
+		#val_transform = train_transform
+		train_transform = TwoContrastTransform(train_transform)
 	elif contrast_type == 'supervised':
 		train_transform = v2.Compose([
 			v2.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
@@ -97,23 +108,23 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 			normalize,
 			])
 
-
-	# if augmentation_type == combined, just return
-	return train_transform, val_transform
+	return train_transform, val_transform, test_transform
 
 
 
 def get_dataloaders(args, data_properties_dict):
 	
 	# get transformations for validation and for training
-	train_transform, val_transform = get_augmentations(
+	train_transform, val_transform, test_transform = get_augmentations(
 		contrast_type=args.contrast,
 		rgb_mean=data_properties_dict[args.dataset].rgb_mean,
 		rgb_std=data_properties_dict[args.dataset].rgb_std,
 		crop_size=args.crop_size)
 	
+	train_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
+	print(f"[INFO:] Training set at '{train_root}'")
 	dataset_train = SimpleTimeContrastiveDataset(
-		root=os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}',
+		root=train_root,
 		transform=train_transform,
 		contrastive=True if (args.contrast == 'time' or
 							 'combined' in args.contrast) else False,)
@@ -121,9 +132,14 @@ def get_dataloaders(args, data_properties_dict):
 	dataloader_train = DataLoader(
 		dataset_train, batch_size=args.batch_size,
 								  num_workers=args.num_workers, shuffle=True, drop_last=True)
-	
+	# if there is a eval_train_split use it, if not go for the train split
+	if args.eval_train_split:
+		train_eval_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.eval_train_split}' if args.eval_train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.eval_train_split}'
+	else:
+		train_eval_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
+	print(f"[INFO:] Evaluation Training set at '{train_eval_root}'")
 	dataset_train_eval = SimpleTimeContrastiveDataset(
-		root=os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}',
+		root=train_eval_root,
 		transform=val_transform,
 		contrastive=False
 	)
@@ -131,9 +147,12 @@ def get_dataloaders(args, data_properties_dict):
 	dataloader_train_eval = DataLoader(
 		dataset_train_eval, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 	
+	
+	test_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.test_split}' if args.test_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.test_split}'
+	print(f"[INFO:] Test set at '{test_root}'")
 	dataset_test = SimpleTimeContrastiveDataset(
-		root=os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.test_split}',
-		transform=val_transform,
+		root=test_root,
+		transform=test_transform,
 		contrastive=False
 	)
 	dataloader_test = DataLoader(

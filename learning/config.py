@@ -47,7 +47,7 @@ parser.add_argument("--experiment_dir",
 # Dataset
 parser.add_argument('--dataset',
                     default='C3',
-                    choices=['C3'], type=str)
+                    choices=['C3', 'C3_neutral_lighting'], type=str)
 parser.add_argument('--train_split',
                     help='Folder where the train split is located',
                     default='train',
@@ -82,7 +82,7 @@ parser.add_argument('--main_loss',
                     choices=['SimCLR', 'VICReg', 'supervised', 'supervised_representation'], type=str)
 parser.add_argument('--contrast',
                     default='time',
-                    choices=['time', 'classic', 'combined', 'supervised', 'nocontrast', 'combined_jitterplusgrayscale'], type=str)
+                    choices=['time', 'classic', 'combined', 'supervised', 'jitter', 'nocontrast', 'combined_jitter'], type=str)
 parser.add_argument('--reg_loss',
                     default=None,
                     choices=[None, 'RELIC', 'Decorrelation'], type=none_or_str)
@@ -201,7 +201,7 @@ parser.add_argument("--cov-coeff", type=float, default=1.0,
                     help='Covariance regularization loss coefficient')
 
 
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 
 

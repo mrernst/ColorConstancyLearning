@@ -22,7 +22,7 @@ import numpy as np
 from tqdm import tqdm
 
 from utils.visualization import ConfusionMatrix
-from utils.networks import LinearClassifier, SplitOutput
+from utils.networks import LinearClassifier
 from utils.general import DotDict, AverageMeter, save_model
 
 # custom functions
@@ -114,9 +114,10 @@ def train_linear_classifier(train_dataloader, test_dataloader, input_features, n
                 testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, confusion_matrix, device=device)
                 training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
                 
-                confusion_matrix.to_tensorboard(
-                    writer, [f"{i:04}" for i in range(num_classes)], timestep, label='test/class/nn_cm',)
-                confusion_matrix.reset()
+                if (writer and confusion_matrix):
+                    confusion_matrix.to_tensorboard(
+                        writer, [f"{i:04}" for i in range(num_classes)], timestep, label='test/class/nn_cm',)
+                    confusion_matrix.reset()
             else:
                 # in the last epoch we could also write down a confusion matrix
                 testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, device=device)
@@ -131,8 +132,10 @@ def train_linear_classifier(train_dataloader, test_dataloader, input_features, n
                 writer.add_scalar(description_string + f'/accloss/test/loss', testing_loss, t + 1)
                 writer.add_scalar(description_string + f'/accloss/train/accuracy', training_acc, t + 1)
                 writer.add_scalar(description_string + f'/accloss/test/accuracy', testing_acc, t + 1)
+    
     # save trained classifier
-    save_model(classifier, writer, timestep, model_name='classifier')
+    if writer:
+        save_model(classifier, writer, timestep, model_name='classifier')
     # reset backbone to training
     model.train()
     return training_loss, training_acc, testing_loss, testing_acc
@@ -388,7 +391,7 @@ def evaluate(dataloader_test, dataloader_train_eval, dataloader_train, data_prop
             # linear encoder is computationally expensive
             # TODO: the LeNet output size is hardcoded and needs to be inferred
             # TODO the linear classifier still needs a writer, try to remove
-            test_loss, test_acc, train_loss, train_acc = train_linear_classifier(
+            train_loss, train_acc, test_loss, test_acc,  = train_linear_classifier(
                 dataloader_train_eval, dataloader_test, 84, data_properties_dict[args.dataset].n_classes, model=model, confusion_matrix=confusion_matrix, epochs=args.linear_nn_epochs, timestep=epoch + 1, test_every=args.linear_nn_test_every, writer=writer, device=device)
             # eval_results_dict['accloss/test/class/acc'] = test_acc
             # eval_results_dict['accloss/test/class/loss'] = test_loss

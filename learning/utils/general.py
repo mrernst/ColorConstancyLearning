@@ -94,7 +94,8 @@ def load_model(model, path, device):
             represented by a string object
     """
     
-    model.load_state_dict(torch.load(path, map_location=device))
+    model.load_state_dict(torch.load(path, map_location=torch.device(device)))
+    
     pass
 
 

@@ -65,7 +65,7 @@ data_properties_dict = {
 
 
 
-# custom functions
+# main loop
 # -----
 
 def main():

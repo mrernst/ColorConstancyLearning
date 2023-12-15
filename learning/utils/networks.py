@@ -102,7 +102,7 @@ class LeNet5(nn.Module):
     def get_internal_representations(self, x):
         return_dict = DotDict({
             'l1': self.layer1(x),
-            'l2':self.layer2(self.layer1(x)),
+            'l2': self.layer2(self.layer1(x)),
         })
         return return_dict
 
@@ -188,6 +188,13 @@ class SplitOutput(nn.Module):
     
     def forward(self,x):
         return x[self.return_split]
+
+class DoubleOutput(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self,x):
+        return (x,x)
 
 class LinearClassifier(nn.Module):
     def __init__(self, num_features=128, num_classes=50):

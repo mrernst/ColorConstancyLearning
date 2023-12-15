@@ -392,6 +392,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
     
         super().__init__(root, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file)
         # samples needs to be sorted first and the rotation needs to happen per object
+        
         self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
         self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
         # on a per object basis one could also make a definite list  l[1:] + l[-2:-1]
@@ -400,8 +401,21 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         # load additional label information, i.e. lighting and light color
         self.load_additional_labels()
         self._label_by = 'object'
+        # multiply the dataset for the neutral testing case to have comparable
+        # epoch length
+        if (len(self.samples) == 50):
+            self._multiply_dataset(factor=300)
 
-    
+    def _multiply_dataset(self, factor):
+        self.samples *= factor
+        self.color_labels *= factor
+        self.power_labels *= factor
+        self.object_labels *= factor
+        self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
+        self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
+            
+        pass
+        
     def load_additional_labels(self):
         # have an ordered list
         list_of_objects = os.listdir(self.root)
@@ -416,7 +430,6 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
             # represent intensities as 8D vector
             # represent lights as RGB * light number 3*8=24 one-hot encoding
             light_colors = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
-            
             light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
             
             light_powers = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_powers_{int(object)}.txt")
@@ -516,7 +529,7 @@ if __name__ == "__main__":
     
     
     dataset = SimpleTimeContrastiveDataset(
-        root='../data/C3/train/',
+        root='data/C3/train',
         transform=transforms.ToTensor(),
         contrastive=True,
     )
@@ -530,6 +543,22 @@ if __name__ == "__main__":
         if ibatch == 4:
             break
     
+    
+    
+    dataset = SimpleTimeContrastiveDataset(
+        root='data/C3_neutral_lighting/train',
+        transform=train_transform,
+        contrastive=False,
+    )
+    
+    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+    for ibatch, sample_batched in enumerate(dataloader):
+        #print(ibatch)
+        #print(sample_batched[0][0].shape)
+    
+        show_batch(sample_batched)
+        if ibatch == 4:
+            break
     
     
     start = time.time()
