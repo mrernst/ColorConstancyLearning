@@ -66,6 +66,11 @@ parser.add_argument('--val_split',
 parser.add_argument('--data_root',
                     help='Folder where the dataset is located',
                     default='data', type=str)
+parser.add_argument('--sampling_mode',
+                    help='contrastive sampling mode',
+                    default='randomwalk',
+                    choices=['randomwalk', 'uniform'],
+                    type=str)
 
 parser.add_argument('--lr_decay_epochs',
                       type=list, action='store',

@@ -385,6 +385,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         self,
         root,
         contrastive,
+        sampling_mode='randomwalk',
         extensions = None,
         transform = None,
         target_transform = None,
@@ -397,7 +398,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         self.n_classes = len(self.classes)
         
         # uniform sampling if ever needed
-        if False:
+        if sampling_mode=='uniform':
             # split samples into chunk per class (making use of the fact that we have a balanced dataset)
             # and a sorted sample list
             n = int(len(self.samples) / self.n_classes)

@@ -127,7 +127,8 @@ def get_dataloaders(args, data_properties_dict):
 		root=train_root,
 		transform=train_transform,
 		contrastive=True if (args.contrast == 'time' or
-							 'combined' in args.contrast) else False,)
+							 'combined' in args.contrast) else False,
+		sampling_mode=args.sampling_mode,)
 	
 	dataloader_train = DataLoader(
 		dataset_train, batch_size=args.batch_size,
