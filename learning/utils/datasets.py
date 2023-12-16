@@ -9,6 +9,7 @@
 # -----
 import torch
 import numpy as np
+import random
 import os, sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -392,12 +393,23 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
     
         super().__init__(root, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file)
         # samples needs to be sorted first and the rotation needs to happen per object
+        self.contrastive = contrastive
+        self.n_classes = len(self.classes)
         
+        # uniform sampling if ever needed
+        if False:
+            # split samples into chunk per class (making use of the fact that we have a balanced dataset)
+            # and a sorted sample list
+            n = int(len(self.samples) / self.n_classes)
+            chunks = [self.samples[i:i + n] for i in range(0, len(self.samples), n)]
+            _ = [random.shuffle(chunk) for chunk in chunks]
+            # rejoin nested list
+            self.samples = [j for i in chunks for j in i]
+            
         self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
         self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
         # on a per object basis one could also make a definite list  l[1:] + l[-2:-1]
-        self.contrastive = contrastive
-        self.n_classes = len(self.classes)
+
         # load additional label information, i.e. lighting and light color
         self.load_additional_labels()
         self._label_by = 'object'
