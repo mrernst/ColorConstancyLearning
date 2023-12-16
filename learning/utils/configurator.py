@@ -177,9 +177,14 @@ def get_network(args, data_properties_dict):
 	return network
 
 def get_optimizer(model, args):
-	
-	optimizer = torch.optim.AdamW(
-	model.parameters(), lr=args.lrate, weight_decay=args.weight_decay)
+	if args.optimizer == 'adam':
+		optimizer = torch.optim.Adam(
+		model.parameters(), lr=args.lrate, weight_decay=args.weight_decay)
+	elif args.optimizer == 'adamw':
+		optimizer = torch.optim.AdamW(
+			model.parameters(), lr=args.lrate, weight_decay=args.weight_decay)
+	else:
+		pass
 	
 	return optimizer
 

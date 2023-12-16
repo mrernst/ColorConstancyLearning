@@ -173,6 +173,10 @@ parser.add_argument('--knn_batch_size',
                     default=256,
                     type=int)
 
+parser.add_argument('--optimizer',
+                    default="adam",
+                    choices=["adam", "adamw"],
+                    type=str)
 parser.add_argument('--lrate_decay',
                     default=1.0,
                     type=float)

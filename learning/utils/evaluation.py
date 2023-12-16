@@ -94,7 +94,6 @@ def lls_eval(trained_lstsq_model, eval_features, eval_labels):
 
 def train_linear_classifier(train_dataloader, test_dataloader, input_features, num_classes, model, confusion_matrix=None, epochs=200, timestep=0, test_every=1, writer=None, device='cpu'):
     """
-    TODO: This needs a method to save the model!
     """
     print(f'\n[INFO:] Starting linear evaluation with Neural Network at epoch {timestep + 1}')
     #define model loss and optimizer
