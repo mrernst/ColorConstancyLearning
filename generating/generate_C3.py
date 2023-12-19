@@ -219,6 +219,9 @@ def main(args):
         destination_path = f'./dataset/C3/labels/'
         origin_path = f'./resources/light_powers_{scene_id}.txt'
         shutil.copy2(origin_path, destination_path)
+    destination_path = f'./dataset/C3/labels/'
+    origin_path = f'./resources/cubes.txt'
+    shutil.copy2(origin_path, destination_path)
 
 if __name__ == '__main__':
     
