@@ -11,6 +11,7 @@ import torch
 from torch.linalg import lstsq as torch_lstsq
 from scipy.linalg import lstsq as scipy_lstsq
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 import pacmap
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -24,6 +25,8 @@ from tqdm import tqdm
 from utils.visualization import ConfusionMatrix
 from utils.networks import LinearClassifier
 from utils.general import DotDict, AverageMeter, save_model
+from utils.configurator import get_dataloaders
+
 
 # custom functions
 # -----
@@ -41,42 +44,50 @@ def fuse_representations(model, dataloader, device='cpu'):
         representations: representations output by the network (Tensor)
         labels: labels of the original data (LongTensor)
     """
+    
     model.eval()
     features = []
     labels = []
-    for data_samples, data_labels in dataloader:      
-        features.append(model(data_samples.to(device))[0].detach().cpu())
-        labels.append(data_labels.cpu())
+    
+    for X, y in dataloader:      
+        features.append(model(X.to(device))[0].detach().cpu())
+        labels.append(y.cpu())
     features = torch.cat(features, 0)
     labels = torch.cat(labels, 0)
     return features, labels
 
 
 @torch.no_grad()
-def lls_fit(train_features, train_labels, n_classes, scipy=False):
+def lls_fit(train_features, train_labels, num_classes, label_type='one_hot', scipy=False):
     """
         Fit a linear least square model
         params:
             train_features: the representations to be trained on (Tensor)
             train_labels: labels of the original data (LongTensor)
-            n_classes: int, number of classes
+            num_classes: int, number of classes
         return:
             ls: the trained lstsq model (torch.linalg) 
     """
+    
+    if label_type == 'one_hot':
+        labels = F.one_hot(train_labels.cpu(), num_classes).type(torch.float32)
+    else:
+        labels = train_labels.cpu().type(torch.float32)
+    
     if scipy:
         # this scipy fallback is there because on the Cluster pytorch 2 only works in limited ways
-        p, res, rnk, s = scipy_lstsq(train_features.cpu(), F.one_hot(train_labels.cpu(), n_classes).type(torch.float32))
+        p, res, rnk, s = scipy_lstsq(train_features.cpu(), labels)
         # package in a dot_dict so that you can use it as if it was the torch version
         ls = DotDict({'solution':p, 'residuals':res, 'rank':rnk, 'singular_values':s})
 
     else:
-        ls = torch_lstsq(train_features, F.one_hot(train_labels, n_classes).type(torch.float32))
+        ls = torch_lstsq(train_features, labels)
     
     
     return ls
 
 @torch.no_grad()
-def lls_eval(trained_lstsq_model, eval_features, eval_labels):
+def lls_eval(trained_lstsq_model, eval_features, eval_labels, label_type='one_hot'):
     """
     Evaluate a trained linear least square model
     params:
@@ -87,44 +98,92 @@ def lls_eval(trained_lstsq_model, eval_features, eval_labels):
         acc: the LLS accuracy (float)
     """
     prediction = (eval_features @ trained_lstsq_model.solution)
-    acc = (prediction.argmax(dim=-1) == eval_labels).sum() / len(eval_features)
+    
+    if label_type == 'one_hot':
+        acc = (prediction.argmax(dim=-1) == eval_labels).sum() / len(eval_features)
+    elif label_type == 'n_hot':
+        # TODO: this is not general and only works
+        # for the specific encoding of the dataset
+        eval_labels = torch.reshape(eval_labels,(-1,8,3))
+        prediction = torch.reshape(prediction,(-1,8,3))
+        acc = ((((F.sigmoid(prediction)>0.5) == eval_labels).sum(2) == 3).sum(1)/8).sum() / prediction.shape[0]
+        #acc = torch.sum(torch.eq(torch.sum(F.sigmoid(prediction>0.5) == eval_labels,2),3))/ prediction.shape[0]
+
+    else:
+        acc = None
     return prediction, acc
 
 
+def train_linear_regressor(train_dataloader, test_dataloader, input_features, output_features, model, loss_fn=torch.nn.L1Loss(), learning_rate=1e-3, epochs=200, timestep=0, test_every=1, label_type='continous', writer=None, description="reg", device='cpu'):
+    
+    assert label_type in ['continous'], f"label_type {label_type} not allowed."
+    #TODO: finish this function
+    
+    print(f'\n[INFO:] Training linear neural network regressor at epoch {timestep + 1}')
+    regressor = LinearClassifier(input_features, output_features).to(device)
+    optimizer = torch.optim.Adam(regressor.parameters(), lr=learning_rate)
+    
+    training_loop = tqdm(range(epochs), ncols=80)
+    
+    for t in training_loop:
+        training_loss, training_acc = train(train_dataloader, model, regressor, loss_fn, optimizer, label_type, device)
+        if (((t+1)%test_every==0) or (t==0) or (t+1==epochs)): # add results at the first and the last timestep in any case
+            if (t+1 == epochs):
+                # if we are in the last epoch evaluate with a confusion matrix
+                testing_loss, testing_acc = test(test_dataloader, model, regressor, loss_fn, label_type, device=device)
+                training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
+            else:
+                testing_loss, testing_acc = test(test_dataloader, model, regressor, loss_fn, label_type, device=device)
+                training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
+    
+                
+            if writer:
+                description_string = f"linear/{description}/e{timestep}"
+    
+                # log data to tensorboard writer
+                writer.add_scalar(description_string + f'/accloss/train/loss', training_loss, t + 1)
+                writer.add_scalar(description_string + f'/accloss/test/loss', testing_loss, t + 1)
+    
+    # save trained regressor
+    if writer:
+        save_model(regressor, writer, timestep, model_name='regressor')
+    # reset backbone to training
+    model.train()
+    # TODO: add an evaluation metric that you could return instead of accuracy
+    return training_loss, None, testing_loss, None
 
-def train_linear_classifier(train_dataloader, test_dataloader, input_features, num_classes, model, confusion_matrix=None, epochs=200, timestep=0, test_every=1, writer=None, device='cpu'):
+
+def train_linear_classifier(train_dataloader, test_dataloader, input_features, output_features, model, loss_fn=torch.nn.CrossEntropyLoss(), learning_rate=1e-3, epochs=200, timestep=0, test_every=1, label_type='one_hot', confusion_matrix=None, writer=None, description="class", device='cpu'):
     """
     """
-    print(f'\n[INFO:] Starting linear evaluation with Neural Network at epoch {timestep + 1}')
+    assert label_type in ['one_hot', 'n_hot'], f"label_type {label_type} not allowed."
+    print(f'\n[INFO:] Training linear neural network classifier at epoch {timestep + 1}')
     #define model loss and optimizer
-    classifier = LinearClassifier(input_features, num_classes).to(device)
-
-    loss_fn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
+    classifier = LinearClassifier(input_features, output_features).to(device)
+    optimizer = torch.optim.Adam(classifier.parameters(), lr=learning_rate)
     
     
     training_loop = tqdm(range(epochs), ncols=80)
     
     for t in training_loop:
-        training_loss, training_acc = train(train_dataloader, model, classifier, loss_fn, optimizer, device=device)
-        if (((t+1)%test_every==0) or (t==0) or (t+1==epochs)):
+        training_loss, training_acc = train(train_dataloader, model, classifier, loss_fn, optimizer, label_type, device)
+        if (((t+1)%test_every==0) or (t==0) or (t+1==epochs)): # add results at the first and the last timestep in any case
             if (t+1 == epochs):
                 # if we are in the last epoch evaluate with a confusion matrix
-                testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, confusion_matrix, device=device)
+                testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, label_type, confusion_matrix, device)
                 training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
                 
                 if (writer and confusion_matrix):
                     confusion_matrix.to_tensorboard(
-                        writer, [f"{i:04}" for i in range(num_classes)], timestep, label='test/class/nn_cm',)
+                        writer, [f"{i:04}" for i in range(output_features)], timestep, label='test/class/nn_cm',)
                     confusion_matrix.reset()
             else:
-                # in the last epoch we could also write down a confusion matrix
-                testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, device=device)
+                testing_loss, testing_acc = test(test_dataloader, model, classifier, loss_fn, label_type, device=device)
                 training_loop.set_description(f'Loss: {testing_loss:>8.4f}')
     
                 
             if writer:
-                description_string = f"linearNN/e{timestep}"
+                description_string = f"linear/{description}/e{timestep}"
 
                 # log data to tensorboard writer
                 writer.add_scalar(description_string + f'/accloss/train/loss', training_loss, t + 1)
@@ -140,7 +199,7 @@ def train_linear_classifier(train_dataloader, test_dataloader, input_features, n
     return training_loss, training_acc, testing_loss, testing_acc
 
 
-def train(dataloader, model, classifier, loss_fn, optimizer, device='cpu'):
+def train(dataloader, model, classifier, loss_fn, optimizer, label_type='one_hot', device='cpu'):
     size = len(dataloader.dataset)
     model.eval()
     classifier.train()
@@ -158,7 +217,14 @@ def train(dataloader, model, classifier, loss_fn, optimizer, device='cpu'):
         loss = loss_fn(pred, y)
         
         train_loss += loss.item()
-        correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        if label_type == 'one_hot':
+            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        elif label_type == 'n_hot':
+            pred = torch.nn.functional.sigmoid(pred)
+            y, pred = torch.reshape(y,(-1,8,3)), torch.reshape(pred,(-1,8,3))
+            correct += ((((pred>0.5) == y).sum(2) == 3).sum(1)/8).sum()
+        else:
+            correct = 0
         # Backpropagation
         loss.backward()
         optimizer.step()
@@ -174,7 +240,7 @@ def train(dataloader, model, classifier, loss_fn, optimizer, device='cpu'):
         
         
 @torch.no_grad()   
-def test(dataloader, model, classifier, loss_fn, confusion_matrix=None, device='cpu'):
+def test(dataloader, model, classifier, loss_fn, label_type='one_hot', confusion_matrix=None, device='cpu'):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -185,7 +251,14 @@ def test(dataloader, model, classifier, loss_fn, confusion_matrix=None, device='
             X, y = X.to(device), y.to(device)
             pred = classifier(model.encoder(X))
             test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            if label_type == 'one_hot':
+                correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            elif label_type == 'n_hot':
+                pred = torch.nn.functional.sigmoid(pred)
+                y, pred = torch.reshape(y,(-1,8,3)), torch.reshape(pred,(-1,8,3))
+                correct += ((((pred>0.5) == y).sum(2) == 3).sum(1)/8).sum()
+            else:
+                correct = 0
             if confusion_matrix:
                 confusion_matrix.update(pred.cpu(), y.cpu())
     test_loss /= num_batches
@@ -199,6 +272,7 @@ def test(dataloader, model, classifier, loss_fn, confusion_matrix=None, device='
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the
     specified values of k"""
+    # TODO: This is too elaborate for what I'm mostly doing here, just get top1 accuracy
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)
@@ -252,7 +326,7 @@ def supervised_eval(model, dataloader, criterion, no_classes, confusion_matrix=N
     
 
 @torch.no_grad()
-def wcss_bcss(representations, labels, n_classes):
+def wcss_bcss(representations, labels, num_classes):
     """
         Calculate the within-class and between-class average distance ratio
         params:
@@ -263,12 +337,12 @@ def wcss_bcss(representations, labels, n_classes):
     """
     # edgecase: there might be less on one class than of another
     # -----
-    # representations = torch.stack([representations[labels == i] for i in range(n_classes)])
+    # representations = torch.stack([representations[labels == i] for i in range(num_classes)])
     # centroids = representations.mean(1, keepdim=True)
     # wcss = (representations - centroids).norm(dim=-1).mean()
     # bcss = F.pdist(centroids.squeeze()).mean()
     # wb = wcss / bcss
-    representations = [representations[labels == i] for i in range(n_classes)]
+    representations = [representations[labels == i] for i in range(num_classes)]
     centroids = torch.stack([r.mean(0, keepdim=True) for r in representations])
     wcss = [(r - centroids[i]).norm(dim=-1) for i,r in enumerate(representations)]
     wcss = torch.cat(wcss).mean()
@@ -280,13 +354,13 @@ def wcss_bcss(representations, labels, n_classes):
 
 #https://openaccess.thecvf.com/content_cvpr_2018/papers/Wu_Unsupervised_Feature_Learning_CVPR_2018_paper.pdf
 @torch.no_grad()
-def knn_eval(train_features, train_labels, test_features, test_labels, n_classes, sim_function, size_batch=512):
+def knn_eval(train_features, train_labels, test_features, test_labels, num_classes, sim_function, size_batch=512):
     k=20
     i=0
     correct=0
     probs_list = []
     expanded_train_label = train_labels.view(1,-1).expand(size_batch,-1)
-    retrieval_one_hot = torch.zeros(size_batch*k, n_classes, device=train_features.device)
+    retrieval_one_hot = torch.zeros(size_batch*k, num_classes, device=train_features.device)
     while i < test_features.shape[0]:
         endi = min(i+size_batch,test_features.shape[0])
         tf = test_features[i:endi]
@@ -297,14 +371,14 @@ def knn_eval(train_features, train_labels, test_features, test_labels, n_classes
         #retrieval_one_hot = torch.zeros(K, C)
         #List of labels [1, 4, 9...]
         if retrieval.shape[0] < size_batch:
-            retrieval_one_hot = torch.zeros(tf.shape[0]*k, n_classes, device=train_features.device)
+            retrieval_one_hot = torch.zeros(tf.shape[0]*k, num_classes, device=train_features.device)
         retrieval_one_hot[:,:]=-10000
         scattered_retrieval = retrieval_one_hot.scatter_(1, retrieval.view(-1,1) , 1)
-        retrieval_onehot = scattered_retrieval.view(retrieval.shape[0],k, n_classes)
+        retrieval_onehot = scattered_retrieval.view(retrieval.shape[0],k, num_classes)
         sim_topk = retrieval_onehot*valk.unsqueeze(-1)
         probs = torch.sum(sim_topk, dim=1)
         probs_list.append(probs)
-        prediction = torch.max(probs,dim=1).indices
+        prediction = torch.max(probs, dim=1).indices
         correct += (prediction == test_labels[i:endi]).sum(dim=0)
         i=endi
     #print(probs_list, correct/test_features.shape[0])
@@ -313,7 +387,7 @@ def knn_eval(train_features, train_labels, test_features, test_labels, n_classes
 
 
 @torch.no_grad()
-def get_pacmap(representations, labels, epoch, n_classes, class_labels):
+def get_pacmap(representations, labels, epoch, num_classes, class_labels, color_map=None):
     """
         Draw the PacMAP plot
         params:
@@ -327,13 +401,16 @@ def get_pacmap(representations, labels, epoch, n_classes, class_labels):
     sns.set_style("ticks")
     sns.set_context('paper', font_scale=1.8, rc={'lines.linewidth': 2})
     # color_map = get_cmap('viridis')
-    color_map = ListedColormap(sns.color_palette('colorblind', 50))
+    if not(color_map):
+        color_map = ListedColormap(sns.color_palette('colorblind', num_classes))
+        #hsl_colors = [(i * (360 / num_classes), 50, 100) for i in range(num_classes)]
+        #color_map = ListedColormap([hsv_to_rgb((hsl[0] / 360, hsl[1] / 100, hsl[2] / 100)) for hsl in hsl_colors])
+    else:
+        pass
     
+
     
-    hsl_colors = [(i * (360 / n_classes), 50, 100) for i in range(n_classes)]
-    color_map = ListedColormap([hsv_to_rgb((hsl[0] / 360, hsl[1] / 100, hsl[2] / 100)) for hsl in hsl_colors])
-    
-    #legend_patches = [Patch(color=color_map(i / n_classes), label=label) for i, label in enumerate(class_labels)]
+    #legend_patches = [Patch(color=color_map(i / num_classes), label=label) for i, label in enumerate(class_labels)]
     legend_patches = [Patch(color=color_map(i), label=label) for i, label in enumerate(class_labels)]
     # save the visualization result
     embedding = pacmap.PaCMAP(n_components=2)
@@ -386,12 +463,23 @@ def evaluate(dataloader_test, dataloader_train_eval, dataloader_train, data_prop
         confusion_matrix.reset()
     else:
         # unsupervised model evaluation
-        if args.linear_nn:
+        if args.linear_nn or args.exhaustive_test:
             # linear encoder is computationally expensive
             # TODO: the LeNet output size is hardcoded and needs to be inferred
             # TODO the linear classifier still needs a writer, try to remove
             train_loss, train_acc, test_loss, test_acc,  = train_linear_classifier(
-                dataloader_train_eval, dataloader_test, 84, data_properties_dict[args.dataset].n_classes, model=model, confusion_matrix=confusion_matrix, epochs=args.linear_nn_epochs, timestep=epoch + 1, test_every=args.linear_nn_test_every, writer=writer, device=device)
+                dataloader_train_eval,
+                dataloader_test,
+                84,
+                data_properties_dict[args.dataset].n_classes,
+                model=model,
+                confusion_matrix=confusion_matrix,
+                epochs=args.linear_nn_epochs,
+                timestep=epoch + 1,
+                test_every=args.linear_nn_test_every,
+                writer=writer,
+                description='object',
+                device=device)
             # eval_results_dict['accloss/test/class/acc'] = test_acc
             # eval_results_dict['accloss/test/class/loss'] = test_loss
             # eval_results_dict['accloss/train/class/acc'] = train_acc
@@ -405,7 +493,102 @@ def evaluate(dataloader_test, dataloader_train_eval, dataloader_train, data_prop
                 'accloss/train/class/accuracy', train_acc, epoch + 1)
             writer.add_scalar(
                 'accloss/train/class/loss', train_loss, epoch + 1)
-        else:
+        
+        if args.exhaustive_test:
+            # reget the datasets and ignore the dataloaders, make sure to name the dataloaders something different
+            _, _, _, dataset_train, dataset_train_eval, dataset_test = get_dataloaders(
+            args, data_properties_dict)
+            # 1) label by color
+            dataset_train_eval.label_by = 'color'
+            dataset_test.label_by = 'color'
+            dl_train_eval = DataLoader(
+                dataset_train_eval, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+            dl_test = DataLoader(
+                dataset_test, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+            # linear evaluation
+            train_loss, train_acc, test_loss, test_acc = \
+            train_linear_classifier(
+                train_dataloader=dl_train_eval, 
+                test_dataloader=dl_test, 
+                input_features=84, 
+                output_features=24, 
+                model=model, 
+                loss_fn=torch.nn.BCEWithLogitsLoss(),
+                learning_rate=1e-3, #TODO: evaluate what to put in here as a default
+                epochs=args.linear_nn_epochs, 
+                timestep=epoch + 1, 
+                test_every=args.linear_nn_test_every,
+                label_type='n_hot', 
+                confusion_matrix=None, 
+                writer=writer, 
+                description='color',
+                device=device)
+            writer.add_scalar(
+                'accloss/test/color/accuracy', test_acc, epoch + 1)
+            writer.add_scalar(
+                'accloss/test/color/loss', test_loss, epoch + 1)
+            writer.add_scalar(
+                'accloss/train/color/accuracy', train_acc, epoch + 1)
+            writer.add_scalar(
+                'accloss/train/color/loss', train_loss, epoch + 1)
+            
+            # 2) label by intensity
+            dataset_train_eval.label_by = 'power'
+            dataset_test.label_by = 'power'
+            dl_train_eval = DataLoader(
+                dataset_train_eval, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+            dl_test = DataLoader(
+                dataset_test, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+            # linear evaluation
+            train_loss, train_acc, test_loss, test_acc = \
+            train_linear_regressor(
+                train_dataloader=dl_train_eval,
+                test_dataloader=dl_test,
+                input_features=84,
+                output_features=8,
+                model=model,
+                loss_fn=torch.nn.L1Loss(),
+                learning_rate=1e-2, #TODO: evaluate what to put in here as a default
+                epochs=args.linear_nn_epochs, 
+                timestep=epoch + 1, 
+                test_every=args.linear_nn_test_every,
+                writer=writer,
+                description='power',
+                device=device)
+            
+            writer.add_scalar(
+                'accloss/test/power/loss', test_loss, epoch + 1)
+            writer.add_scalar(
+                'accloss/train/power/loss', train_loss, epoch + 1)
+            
+            # 3) label by combined color intensity
+            dataset_train_eval.label_by = 'lighting'
+            dataset_test.label_by = 'lighting'
+            dl_train_eval = DataLoader(
+                dataset_train_eval, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+            dl_test = DataLoader(
+                dataset_test, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+            
+            train_loss, train_acc, test_loss, test_acc = \
+            train_linear_regressor(
+                train_dataloader=dl_train_eval,
+                test_dataloader=dl_test,
+                input_features=84,
+                output_features=24,
+                model=model,
+                loss_fn=torch.nn.L1Loss(),
+                learning_rate=1e-1, #TODO: evaluate what to put in here as a default
+                epochs=args.linear_nn_epochs, 
+                timestep=epoch + 1, 
+                test_every=args.linear_nn_test_every,
+                writer=writer,
+                description='lighting',
+                device=device)
+            
+            writer.add_scalar(
+                'accloss/test/lighting/loss', test_loss, epoch + 1)
+            writer.add_scalar(
+                'accloss/train/lighting/loss', train_loss, epoch + 1)
             pass
         
         # do the standard evaluation on the unsupervised representation

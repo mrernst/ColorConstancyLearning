@@ -160,7 +160,7 @@ def get_dataloaders(args, data_properties_dict):
 		dataset_test, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 	
 	
-	return dataloader_train, dataloader_train_eval, dataloader_test
+	return dataloader_train, dataloader_train_eval, dataloader_test, dataset_train, dataset_train_eval, dataset_test
 
 def get_network(args, data_properties_dict):
 		

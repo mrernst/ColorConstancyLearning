@@ -397,15 +397,11 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         self.contrastive = contrastive
         self.n_classes = len(self.classes)
         
-        # uniform sampling if ever needed
-        if sampling_mode=='uniform':
-            # split samples into chunk per class (making use of the fact that we have a balanced dataset)
-            # and a sorted sample list
-            n = int(len(self.samples) / self.n_classes)
-            chunks = [self.samples[i:i + n] for i in range(0, len(self.samples), n)]
-            _ = [random.shuffle(chunk) for chunk in chunks]
-            # rejoin nested list
-            self.samples = [j for i in chunks for j in i]
+        # uniform sampling if ever needed, the sampling mode should be encoded, 0 for random walk 1 for uniform
+        # TODO same is for other if statements to speed up things
+        assert sampling_mode in ['randomwalk'], "Only random walk is implemented for the simple dataset structure"
+        
+        self.sampling_mode = sampling_mode
             
         self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
         self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
@@ -426,8 +422,19 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         self.object_labels *= factor
         self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
         self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
-            
         pass
+    
+    def _reshuffle_dataset(self):
+        # TODO: think about this this is super inefficient
+        # split samples into chunk per class (making use of the fact that we have a balanced dataset)
+        # and a sorted sample list
+        n = int(len(self.samples) / self.n_classes)
+        chunks = [self.samples[i:i + n] for i in range(0, len(self.samples), n)]
+        _ = [random.shuffle(chunk) for chunk in chunks]
+        # rejoin nested list
+        self.samples = [j for i in chunks for j in i]
+        self.samples_shifted_plus_one = self.samples[1:] + self.samples[0:1]
+        self.samples_shifted_minus_one = self.samples[-1:] + self.samples[:-1]
         
     def load_additional_labels(self):
         # have an ordered list
@@ -436,6 +443,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         
         light_colors_dict = {}
         light_powers_dict = {}
+        lighting_dict = {}
         
         for object in list_of_objects:
             
@@ -443,20 +451,25 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
             # represent intensities as 8D vector
             # represent lights as RGB * light number 3*8=24 one-hot encoding
             light_colors = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_colors_{int(object)}.txt", dtype=str)
-            light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
+            # light_colors stacked
+            #light_colors = np.stack([(np.stack([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(int)) for r in range(len(light_colors))])
+            # light colors concatenated
+            light_colors = np.stack([(np.concatenate([light_code_to_colorrgb(c) for c in light_colors[r]]).astype(np.float32)) for r in range(len(light_colors))])
             
-            light_powers = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_powers_{int(object)}.txt")
-            
+            light_powers = np.loadtxt(self.root.rsplit('/', 1)[0] +"/labels/" + f"light_powers_{int(object)}.txt", dtype=np.float32)
             light_colors_dict[int(object)] = light_colors
             light_powers_dict[int(object)] = light_powers
-            
+            lighting_dict[int(object)] = np.repeat(light_powers, 3, axis=1) * light_colors
+
         self.color_labels = []
         self.power_labels = []
         self.object_labels = []
+        self.lighting_labels = []
         for full_path, label in self.samples:
             img_id = int((full_path.split('/')[-1].split('.')[0]))
-            self.color_labels.append([light_colors_dict[label][img_id]])
+            self.color_labels.append(light_colors_dict[label][img_id])
             self.power_labels.append(light_powers_dict[label][img_id])
+            self.lighting_labels.append(lighting_dict[label][img_id])
             self.object_labels.append(label)
         
         pass
@@ -467,18 +480,23 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
     
     @label_by.setter
     def label_by(self, l):
-        assert l in ['object', 'color', 'power']        
+        assert l in ['object', 'color', 'power', 'lighting']        
         self._label_by = l
         if l =='color':
-            self.n_classes = 18 # not real classes but output nodes
-            self.classes = [f'{i}' for i in range(18)]
-            # redo samples samples + 1 and samples - 1
+            self.n_classes = 24 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(24)]
+            # redo samples samples + 1 and samples - 1 ?
             
-            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples],self.color_labels)]
+            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples], self.color_labels)]
         elif l == 'power':
             self.n_classes = 6 # not real classes but output nodes
             self.classes = [f'{i}' for i in range(6)]
             self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples],self.power_labels)]
+        elif l == 'lighting':
+            self.n_classes = 24 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(24)]
+            # redo samples samples + 1 and samples - 1 ?
+            self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples], self.lighting_labels)]
         else:
             self.n_classes = 50
             self.classes = [f'{i}' for i in range(50)]
@@ -494,6 +512,9 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, target = self.samples[index]
+        
+        # if self.sampling_mode == 'uniform':
+        #     self._reshuffle_dataset()
         
 
         if self.contrastive:

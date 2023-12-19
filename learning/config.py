@@ -118,13 +118,12 @@ parser.add_argument('--no-projectionhead',
 parser.set_defaults(projectionhead=True)
 
 
-parser.add_argument('--verbose',
-                    dest='verbose',
+parser.add_argument('--exhaustive_test',
+                    dest='exhaustive_test',
                     action='store_true')
-parser.add_argument('--no-verbose',
-                    dest='verbose',
+parser.add_argument('--no-exhaustive_test',
+                    dest='exhaustive_test',
                     action='store_false')
-parser.set_defaults(verbose=True)
 
 
 # parser.add_argument('--save_model',
