@@ -60,6 +60,11 @@ data_properties_dict = {
            'classes': [str(c) for c in range(0,50)],
            'n_classes': 50,
            }),
+    'C3x': DotDict({'rgb_mean': (0.3621, 0.3644, 0.3635),
+       'rgb_std': (0.1456, 0.1479, 0.1477),
+       'classes': [str(c) for c in range(0,150)],
+       'n_classes': 150,
+       }),
 }
 
 
