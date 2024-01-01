@@ -78,7 +78,10 @@ def main(args):
 	# that way we get away with about 64 light samples otherwise we should be looking at >= 4096
 	
 	bproc.renderer.set_max_amount_of_samples(args.render_samples)
-	bproc.renderer.set_denoiser("INTEL") #(None)
+	if args.render_samples <= 256:
+		bproc.renderer.set_denoiser("INTEL") #(None)
+	else:
+		bproc.renderer.set_denoiser(None) #(None)
 
 	# render the whole pipeline
 	data = bproc.renderer.render()
