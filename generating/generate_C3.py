@@ -28,7 +28,7 @@ def main(args):
 	            
             cube_rgb_colors = np.array(cube_rgb_colors)
             np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
-        elif args.cube_colors == 'hue_sat_grid':
+        elif args.cube_colors == 'hue_sat_grid5':
             # hue sat variant 10*5
             cube_rgb_colors = []
             cube_hsv_colors = [(i * (360 / (args.n_cubes//5)), 90, 100) for i in range(args.n_cubes//5)]
@@ -44,6 +44,21 @@ def main(args):
                 
             cube_rgb_colors = np.array(cube_rgb_colors)
             np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
+        elif args.cube_colors == 'hue_sat_grid3':
+            # hue sat variant 10*5
+            cube_rgb_colors = []
+            cube_hsv_colors = [(i * (360 / (args.n_cubes//3)), 50, 100) for i in range(args.n_cubes//3)]
+            cube_hsv_colors += [(i * (360 / (args.n_cubes//3)), 60, 100) for i in range(args.n_cubes//3)]
+            cube_hsv_colors += [(i * (360 / (args.n_cubes//3)), 40, 100) for i in range(args.n_cubes//3)]
+            
+            for color in cube_hsv_colors:
+                # print(color)
+                # print([color[0]/360, color[1]/100, color[2]/100])
+                cube_rgb_colors.append(hsv_to_rgb([color[0]/360, color[1]/100, color[2]/100]))
+                
+            cube_rgb_colors = np.array(cube_rgb_colors)
+            np.savetxt('resources/cubes.txt', cube_rgb_colors, fmt='%.3f')
+
         elif args.cube_colors == 'random':
             # random colors
             cube_rgb_colors = []
@@ -228,7 +243,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_cubes', type=int, default="50", help="Number of different cubes (needs to be even)")
     parser.add_argument('--n_lights', type=int, default="8", help="Number of illuminators to be added to the environment")
-    parser.add_argument('--n_frames', type=int, default="2000", help="Number of different illumination combinations")
+    parser.add_argument('--n_frames', type=int, default="1000", help="Number of different illumination combinations")
     parser.add_argument('--lights_min_power', type=int, default="300", help="Minimum power of the illuminators")
     parser.add_argument('--lights_max_power', type=int, default="1000", help="Maximum power of the illuminator")
     parser.add_argument('--max_periodicity', type=int, default="9", help="maximum frames for lights cycle")
@@ -240,7 +255,7 @@ if __name__ == '__main__':
     parser.add_argument('--gif_frame_duration', type=int, default="0", help="Duration in ms of each frame in gif")
     parser.add_argument('--illumination_id', type=int, default=-1, help="Illumination id so that each object gets illuminated the same way")
     parser.add_argument('--turn_on_probability', type=float, default="0.5", help="probability with with the lights turn on")
-    parser.add_argument('--cube_colors', type=str, default='hue_circle', choices=["hue_circle", "random", "hue_sat_grid"], help="Different ways to sample the cube colors")
+    parser.add_argument('--cube_colors', type=str, default='hue_circle', choices=["hue_circle", "random", "hue_sat_grid5", "hue_sat_grid3"], help="Different ways to sample the cube colors")
 
     
     # boolean arguments
