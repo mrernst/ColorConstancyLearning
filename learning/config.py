@@ -47,7 +47,7 @@ parser.add_argument("--experiment_dir",
 # Dataset
 parser.add_argument('--dataset',
                     default='C3',
-                    choices=['C3', 'C3_neutral_lighting'], type=str)
+                    choices=['C3', 'C3x', 'C3_neutral_lighting'], type=str)
 parser.add_argument('--train_split',
                     help='Folder where the train split is located',
                     default='train',
