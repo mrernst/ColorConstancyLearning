@@ -30,7 +30,7 @@ class ResNet18(nn.Module):
         # setting the final layer followed by an MLP to be the representation
         # network (encoder)
         setattr(resnet18, 'fc', nn.Linear(512, args.hidden_dim))
-        self.encoder = nn.Sequential(resnet18, nn.BatchNorm1d(args.hidden_dim),
+        self.encoder = nn.Sequential(resnet18, # nn.BatchNorm1d(args.hidden_dim),
             nn.ReLU(), nn.Linear(256, args.feature_dim, bias=False))
         # a linear layer as projection network
         self.projector = MLPHead(args.feature_dim, args.hidden_dim, args.feature_dim)
@@ -59,13 +59,13 @@ class LeNet5(nn.Module):
         super().__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(3, 6, kernel_size=5, stride=1, padding=0),
-            nn.BatchNorm2d(6),
+            # nn.BatchNorm2d(6),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
         self.layer2 = nn.Sequential(
             nn.Conv2d(6, 16, kernel_size=5, stride=1, padding=0),
-            nn.BatchNorm2d(16),
+            # nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 2, stride = 2),
         )
@@ -112,37 +112,35 @@ class AlexNet(nn.Module):
         super(AlexNet, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(3, 96, kernel_size=3, stride=2, padding=0),
-            nn.BatchNorm2d(96),
+            # nn.BatchNorm2d(96),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2))
         self.layer2 = nn.Sequential(
             nn.Conv2d(96, 256, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(256),
+            # nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2))
         self.layer3 = nn.Sequential(
             nn.Conv2d(256, 384, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(384),
+            # nn.BatchNorm2d(384),
             nn.ReLU())
         self.layer4 = nn.Sequential(
             nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(384),
+            # nn.BatchNorm2d(384),
             nn.ReLU())
         self.layer5 = nn.Sequential(
             nn.Conv2d(384, 256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
+            # nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2))
         self.fc = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(0.5),
-            #nn.Linear(9216, 4096),
-            nn.Linear(256, 128),
+            nn.Linear(256, 128), # nn.Linear(9216, 4096),
             nn.ReLU())
         self.fc1 = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(128, 128),
-            #nn.Linear(4096, 4096),
+            nn.Linear(128, 128), # nn.Linear(4096, 4096),
             nn.ReLU())
         self.encoder = nn.Sequential(
             self.layer1,
@@ -216,7 +214,7 @@ class MLPHead(nn.Module):
     
         self.net = nn.Sequential(
             nn.Linear(in_channels, mlp_hidden_size),
-            nn.BatchNorm1d(mlp_hidden_size),
+            # nn.BatchNorm1d(mlp_hidden_size),
             nn.ReLU(inplace=True),
             nn.Linear(mlp_hidden_size, projection_size)
         )
