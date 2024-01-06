@@ -33,7 +33,7 @@ from utils.datasets import SimpleTimeContrastiveDataset
 # custom functions
 # -----
 
-def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_size:float, jitter_bright:float, jitter_contrast:float, jitter_sat:float, jitter_hue:float):
+def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_size:float, jitter_bright:float, jitter_contrast:float, jitter_sat:float, jitter_hue:float, scale:float):
 	"""
 	contrast_type: str 'classic', 'cltt', else
 	rgb_mean: tuple of float (r, g, b)
@@ -44,7 +44,7 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 	# setup for case contrast_type == 'combined'
 	normalize = v2.Normalize(mean=rgb_mean, std=rgb_std)
 	
-	s = 1.0
+	s = scale
 	train_transform = v2.Compose([
 			v2.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
 			v2.RandomHorizontalFlip(),
@@ -123,7 +123,8 @@ def get_dataloaders(args, data_properties_dict):
 		jitter_bright=args.jitter_brightness,
 		jitter_contrast=args.jitter_contrast,
 		jitter_sat=args.jitter_saturation,
-		jitter_hue=args.jitter_hue
+		jitter_hue=args.jitter_hue,
+		scale=args.jitter_scale,
 	)
 	
 	train_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
