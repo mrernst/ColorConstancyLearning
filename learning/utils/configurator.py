@@ -33,7 +33,7 @@ from utils.datasets import SimpleTimeContrastiveDataset
 # custom functions
 # -----
 
-def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_size:float):
+def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_size:float, jitter_bright:float, jitter_contrast:float, jitter_sat:float, jitter_hue:float):
 	"""
 	contrast_type: str 'classic', 'cltt', else
 	rgb_mean: tuple of float (r, g, b)
@@ -49,7 +49,7 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 			v2.RandomResizedCrop(size=crop_size, scale=(0.2, 1.)),
 			v2.RandomHorizontalFlip(),
 			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+				v2.ColorJitter(jitter_bright*s, jitter_contrast*s, jitter_sat*s, jitter_hue*s)
 			], p=0.8),
 			v2.RandomGrayscale(p=0.2),
 			v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
@@ -76,7 +76,7 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 	elif contrast_type == 'jitter':
 		# TODO: hyperparameter tuning for the hue jitter variable
 		train_transform = v2.Compose([
-			v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s), #0.2*s is default
+			v2.ColorJitter(jitter_bright*s, jitter_contrast*s, jitter_sat*s, jitter_hue*s), #0.2*s is default
 			v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
 			normalize,
 		])
@@ -93,7 +93,7 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 	elif contrast_type == 'combined_jitter':
 		train_transform = v2.Compose([
 			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+				v2.ColorJitter(jitter_bright*s, jitter_contrast*s, jitter_sat*s, jitter_hue*s)
 			], p=0.8),
 			v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
 			normalize,
@@ -101,7 +101,7 @@ def get_augmentations(contrast_type:str, rgb_mean:float, rgb_std:float, crop_siz
 	elif contrast_type == 'combined_jitterplusgrayscale':
 		train_transform = v2.Compose([
 			v2.RandomApply([
-				v2.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+				v2.ColorJitter(jitter_bright*s, jitter_contrast*s, jitter_sat*s, jitter_hue*s)
 			], p=0.8),
 			v2.RandomGrayscale(p=0.2),
 			v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
@@ -119,7 +119,12 @@ def get_dataloaders(args, data_properties_dict):
 		contrast_type=args.contrast,
 		rgb_mean=data_properties_dict[args.dataset].rgb_mean,
 		rgb_std=data_properties_dict[args.dataset].rgb_std,
-		crop_size=args.crop_size)
+		crop_size=args.crop_size,
+		jitter_bright=args.jitter_brightness,
+		jitter_contrast=args.jitter_contrast,
+		jitter_sat=args.jitter_saturation,
+		jitter_hue=args.jitter_hue
+	)
 	
 	train_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
 	print(f"[INFO:] Training set at '{train_root}'")

@@ -209,6 +209,15 @@ parser.add_argument("--cov-coeff", type=float, default=1.0,
                     help='Covariance regularization loss coefficient')
 
 
+# color jittering
+parser.add_argument("--jitter_brightness", type=float, default=0.8,
+                    help='Value for brightness jitter in 0,1')
+parser.add_argument("--jitter_contrast", type=float, default=0.8,
+                    help='Value for contrast jitter in 0,1')
+parser.add_argument("--jitter_saturation", type=float, default=0.8,
+                    help='Value for saturation jitter in 0,1')
+parser.add_argument("--jitter_hue", type=float, default=0.2,
+                    help='Value for hue jitter in 0,0.5')
 args, unknown = parser.parse_known_args()
 
 
