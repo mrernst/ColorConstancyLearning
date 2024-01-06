@@ -413,7 +413,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         # multiply the dataset for the neutral testing case to have comparable
         # epoch length
         if (len(self.samples) == 50):
-            self._multiply_dataset(factor=300)
+            self._multiply_dataset(factor=600)
 
     def _multiply_dataset(self, factor):
         self.samples *= factor
