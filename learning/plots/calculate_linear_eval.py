@@ -240,8 +240,8 @@ for l, (layer, out_dim) in enumerate(zip([l0, l1, l2, l3, l4],[3072,1176,400,84,
 		device=device)
 	print(train_loss, train_acc, test_loss, test_acc)
 	# save all 4 results to disk into data directory
-	np.save(path_to_tmp_evaluation + f'l{l}_accloss{args.test_split.rsplit('/')[0]
-}.npy', np.array([train_loss, train_acc, test_loss, test_acc]))
+	test_split_id = args.test_split.rsplit('/')[0]
+	np.save(path_to_tmp_evaluation + f'l{l}_accloss{test_split_id}.npy', np.array([train_loss, train_acc, test_loss, test_acc]))
 	# train_acc, train_loss, test_acc, test_loss
 
 
@@ -282,8 +282,7 @@ for l, (layer, out_dim) in enumerate(zip([l0, l1, l2, l3, l4],[3072,1176,400,84,
 		device=device)
 	print(train_loss, train_acc.cpu(), test_loss, test_acc.cpu())
 	# save all 4 results to disk into data directory
-	np.save(path_to_tmp_evaluation + f'l{l}_accloss{args.test_split.rsplit('/')[0]
-}.npy', np.array([train_loss, train_acc.cpu(), test_loss, test_acc.cpu()]))
+	np.save(path_to_tmp_evaluation + f'l{l}_accloss{test_split_id}.npy', np.array([train_loss, train_acc.cpu(), test_loss, test_acc.cpu()]))
 	# train_acc, train_loss, test_acc, test_loss
 # _____________________________________________________________________________
 
