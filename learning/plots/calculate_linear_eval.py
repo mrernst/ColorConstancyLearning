@@ -193,7 +193,7 @@ l0.eval()
 
 
 # for temporal data
-args.data_root = "/Users/markus/Research/Code/ColorConstancyLearning/learning/data"
+# args.data_root = "/Users/markus/Research/Code/ColorConstancyLearning/learning/data"
 
 
 
