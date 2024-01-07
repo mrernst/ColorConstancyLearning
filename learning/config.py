@@ -218,6 +218,8 @@ parser.add_argument("--jitter_saturation", type=float, default=0.8,
                     help='Value for saturation jitter in 0,1')
 parser.add_argument("--jitter_hue", type=float, default=0.2,
                     help='Value for hue jitter in 0,0.5')
+parser.add_argument("--jitter_scale", type=float, default=1.0,
+                    help='Value for overall jitter')
 args, unknown = parser.parse_known_args()
 
 
