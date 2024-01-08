@@ -142,27 +142,27 @@ class LeNet5b(nn.Module):
         
         self.projector = MLPHead(84, args.hidden_dim, args.feature_dim)
         self.linear_out = nn.Linear(84, num_classes)
-            
-            
-        def forward(self, x):
-            representation = self.encoder(x)
-            
-            if args.main_loss == 'supervised':
-                projection = self.linear_out(representation)
-            elif args.projectionhead:
-                projection = self.projector(representation)
-            else:
-                projection = representation
-            
-            return representation, projection
+    
         
-        def get_internal_representations(self, x):
-            return_dict = DotDict({
-                'l1': self.layer1(x),
-                'l2': self.layer2(self.layer1(x)),
-                'l3': self.layer3(self.layer2(self.layer1(x))),
-            })
-            return return_dict
+    def forward(self, x):
+        representation = self.encoder(x)
+        
+        if args.main_loss == 'supervised':
+            projection = self.linear_out(representation)
+        elif args.projectionhead:
+            projection = self.projector(representation)
+        else:
+            projection = representation
+        
+        return representation, projection
+    
+    def get_internal_representations(self, x):
+        return_dict = DotDict({
+            'l1': self.layer1(x),
+            'l2': self.layer2(self.layer1(x)),
+            'l3': self.layer3(self.layer2(self.layer1(x))),
+        })
+        return return_dict
 
 class AlexNet(nn.Module):
     def __init__(self, num_classes=50):
