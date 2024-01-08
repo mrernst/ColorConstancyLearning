@@ -19,7 +19,7 @@ from torchvision.transforms import v2
 
 from utils.general import TwoContrastTransform, DotDict
 from utils.losses import RELIC_Loss, VICReg_Loss, SimCLR_Loss, Decorrelation_Loss
-from utils.networks import ResNet18, LeNet5, AlexNet, MLPHead
+from utils.networks import ResNet18, LeNet5, LeNet5b, AlexNet, MLPHead
 from utils.datasets import SimpleTimeContrastiveDataset
 
 
@@ -174,6 +174,8 @@ def get_network(args, data_properties_dict):
 		network = ResNet18(num_classes=data_properties_dict[args.dataset].n_classes)
 	elif args.encoder == 'LeNet5':
 		network = LeNet5(num_classes=data_properties_dict[args.dataset].n_classes)
+	elif args.encoder == 'LeNet5b':
+		network = LeNet5b(num_classes=data_properties_dict[args.dataset].n_classes)
 	elif args.encoder == 'AlexNet':
 		network = AlexNet(num_classes=data_properties_dict[args.dataset].n_classes)
 	else:

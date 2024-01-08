@@ -81,7 +81,7 @@ parser.add_argument('--lr_decay_epochs',
 # Network Configuration
 parser.add_argument('--encoder', help='Network backbone',
                     default='LeNet5',
-                    choices=['resnet18', 'LeNet5', 'AlexNet'], type=str)
+                    choices=['resnet18', 'LeNet5', 'LeNet5b', 'AlexNet'], type=str)
 parser.add_argument('--main_loss',
                     default='SimCLR',
                     choices=['SimCLR', 'VICReg', 'supervised', 'supervised_representation'], type=str)
