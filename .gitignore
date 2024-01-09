@@ -160,3 +160,4 @@ generating/dataset/*
 generating/resources/*
 *.txt
 learning/data/*
+temporary/*
