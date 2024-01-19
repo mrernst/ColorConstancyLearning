@@ -138,6 +138,7 @@ def main(args):
                     dict_of_lights[light] = [x_stacked[OFFSET:N_FRAMES+OFFSET],y_stacked[OFFSET:N_FRAMES+OFFSET],c_stacked[OFFSET:N_FRAMES+OFFSET]]
                 
                 if args.plot:
+                    ax[0].set_ylim(0, args.lights_max_power)
                     #plt.tight_layout()
                     ax[0].set_title('Temporal Lighting Pattern')
                     ax[-1].set_xlabel('Time')
