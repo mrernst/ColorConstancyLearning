@@ -186,8 +186,14 @@ def main(args):
                 np.savetxt(f'resources/light_powers_{scene_id}.txt', light_powers, fmt='%.3f')
         
         # 3. build object files
-        bashCommand = f"blenderproc run export_objects.py" 
+        if args.ground_plane:
+            gp_string = "--ground_plane"
+        else:
+            gp_string = "--no-ground_plane"
+        
+        bashCommand = f"blenderproc run export_objects.py {gp_string}" 
         os.system(bashCommand) #technically also only needs to be done once
+        
     else:
         pass
     
@@ -285,6 +291,10 @@ if __name__ == '__main__':
     parser.add_argument('--same_illumination', dest='same_illumination', action='store_true', help="use the same illumination for every object")
     parser.add_argument('--no-same_illumination', dest='same_illumination', action='store_false')
     parser.set_defaults(same_illumination=False)
+    
+    parser.add_argument('--ground_plane', dest='ground_plane', action='store_true', help="Have a ground plane on the images")
+    parser.add_argument('--no-ground_plane', dest='ground_plane', action='store_false')
+    parser.set_defaults(ground_plane=True)
     
     
     
