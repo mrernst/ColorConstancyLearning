@@ -19,7 +19,7 @@ from torchvision.transforms import v2
 
 from utils.general import TwoContrastTransform, DotDict
 from utils.losses import RELIC_Loss, VICReg_Loss, SimCLR_Loss, Decorrelation_Loss
-from utils.networks import ResNet18, LeNet5, LeNet5b, AlexNet, MLPHead
+from utils.networks import ResNet18, LeNet5, AlexNet, MLPHead
 from utils.datasets import SimpleTimeContrastiveDataset
 
 
@@ -174,8 +174,6 @@ def get_network(args, data_properties_dict):
 		network = ResNet18(num_classes=data_properties_dict[args.dataset].n_classes)
 	elif args.encoder == 'LeNet5':
 		network = LeNet5(num_classes=data_properties_dict[args.dataset].n_classes)
-	elif args.encoder == 'LeNet5b':
-		network = LeNet5b(num_classes=data_properties_dict[args.dataset].n_classes)
 	elif args.encoder == 'AlexNet':
 		network = AlexNet(num_classes=data_properties_dict[args.dataset].n_classes)
 	else:
@@ -199,6 +197,10 @@ def get_optimizer(model, args):
 
 # TODO: convert this into a Loss class with a method get_loss to avoid
 # reloading the dicts every time this function is called
+def convert_class_to_hue_angle(labels, n_classes):
+	hue_angle = labels/(n_classes - 1)
+	return hue_angle
+
 def get_loss(projection:torch.Tensor, pair:torch.Tensor, label:torch.Tensor, args):
 	
 	sim_func_dict = {
