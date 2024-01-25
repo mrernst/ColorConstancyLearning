@@ -73,15 +73,15 @@ parser.add_argument('--sampling_mode',
                     type=str)
 
 parser.add_argument('--lr_decay_epochs',
-                      type=list, action='store',
-                      dest='lr_decay_epochs',
-                      help='epochs where learning rate decays',
-                      default=[0],)
+                    type=list, action='store',
+                    dest='lr_decay_epochs',
+                    help='epochs where learning rate decays',
+                    default=[0],)
  
 # Network Configuration
 parser.add_argument('--encoder', help='Network backbone',
                     default='LeNet5',
-                    choices=['resnet18', 'LeNet5', 'LeNet5b', 'AlexNet'], type=str)
+                    choices=['resnet18', 'LeNet5', 'AlexNet'], type=str)
 parser.add_argument('--main_loss',
                     default='SimCLR',
                     choices=['SimCLR', 'VICReg', 'supervised', 'supervised_representation'], type=str)

@@ -54,61 +54,8 @@ class ResNet18(nn.Module):
         return representation, projection
 
 
-class LeNet5(nn.Module):
-    def __init__(self, num_classes=50):
-        super().__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(3, 6, kernel_size=5, stride=1, padding=0),
-            # nn.BatchNorm2d(6),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size = 2, stride = 2)
-        )
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(6, 16, kernel_size=5, stride=1, padding=0),
-            # nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size = 2, stride = 2),
-        )
-        self.layer3 = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(400, 120),
-            nn.ReLU(),
-            nn.Linear(120, 84),
-            nn.ReLU(),
-        )
-        
-        self.encoder = nn.Sequential(
-            self.layer1,
-            self.layer2,
-            self.layer3
-        )
-        
-        self.projector = MLPHead(84, args.hidden_dim, args.feature_dim)
-        self.linear_out = nn.Linear(84, num_classes)
-        
-        
-    def forward(self, x):
-        representation = self.encoder(x)
-        
-        if args.main_loss == 'supervised':
-            projection = self.linear_out(representation)
-        elif args.projectionhead:
-            projection = self.projector(representation)
-        else:
-            projection = representation
-        
-        return representation, projection
-    
-    def get_internal_representations(self, x):
-        return_dict = DotDict({
-            'l1': self.layer1(x),
-            'l2': self.layer2(self.layer1(x)),
-        })
-        return return_dict
-
-
 # layer 3 should be divided
-class LeNet5b(nn.Module):
+class LeNet5(nn.Module):
     def __init__(self, num_classes=50):
         super().__init__()
         self.layer1 = nn.Sequential(
