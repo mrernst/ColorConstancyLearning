@@ -44,7 +44,8 @@ class ResNet18(nn.Module):
         """
         representation = self.encoder(x)
         
-        if args.main_loss == 'supervised':
+        #if args.main_loss == 'supervised':
+        if args.main_loss in ['supervised', 'supervised_regression']:
             projection = self.linear_out(representation)
         elif args.projectionhead:
             projection = self.projector(representation)
@@ -94,7 +95,8 @@ class LeNet5(nn.Module):
     def forward(self, x):
         representation = self.encoder(x)
         
-        if args.main_loss == 'supervised':
+        #if args.main_loss == 'supervised':
+        if args.main_loss in ['supervised', 'supervised_regression']:
             projection = self.linear_out(representation)
         elif args.projectionhead:
             projection = self.projector(representation)
@@ -164,7 +166,8 @@ class AlexNet(nn.Module):
     def forward(self, x):
         representation = self.encoder(x)
         
-        if args.main_loss == 'supervised':
+        #if args.main_loss == 'supervised':
+        if args.main_loss in ['supervised', 'supervised_regression']:
             projection = self.linear_out(representation)
         elif args.projectionhead:
             projection = self.projector(representation)

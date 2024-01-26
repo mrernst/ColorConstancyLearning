@@ -84,7 +84,7 @@ parser.add_argument('--encoder', help='Network backbone',
                     choices=['resnet18', 'LeNet5', 'AlexNet'], type=str)
 parser.add_argument('--main_loss',
                     default='SimCLR',
-                    choices=['SimCLR', 'VICReg', 'supervised', 'supervised_representation'], type=str)
+                    choices=['SimCLR', 'VICReg', 'supervised', 'supervised_representation', 'supervised_regression'], type=str)
 parser.add_argument('--contrast',
                     default='time',
                     choices=['time', 'classic', 'combined', 'supervised', 'jitter', 'nocontrast', 'combined_jitter'], type=str)
