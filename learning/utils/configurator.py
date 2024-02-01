@@ -198,10 +198,9 @@ def get_optimizer(model, args):
 # TODO: convert this into a Loss class with a method get_loss to avoid
 # reloading the dicts every time this function is called
 def convert_class_to_hue_angle(labels, n_classes=50):
-	hue_angle = labels/(n_classes - 1)
-	#hue_angle = (labels/(n_classes - 1))*2
-	#hue_angle -= 1.0
-	#hue_angle = torch.abs(hue_angle)
+	hue_angle = labels/(n_classes - 1) * 2 * 3.14159
+	hue_angle = torch.stack([torch.sin(hue_angle), torch.cos(hue_angle)], dim=1)
+	#print(hue_angle.shape)
 	return hue_angle
 
 def get_loss(projection:torch.Tensor, pair:torch.Tensor, label:torch.Tensor, args):
@@ -216,7 +215,7 @@ def get_loss(projection:torch.Tensor, pair:torch.Tensor, label:torch.Tensor, arg
 		'VICReg': VICReg_Loss(),
 		'supervised': lambda x, x_pair, labels: F.cross_entropy(x, labels),
 		'supervised_representation': lambda x, x_pair, labels: F.cross_entropy(x, labels),
-		'supervised_regression': lambda x, x_pair, labels: F.l1_loss(x[:,0], convert_class_to_hue_angle(labels)),
+		'supervised_regression': lambda x, x_pair, labels: F.l1_loss(x[:,:2], convert_class_to_hue_angle(labels)),
 	}
 	reg_loss_dict = {
 		'RELIC': RELIC_Loss(sim_func_dict[args.similarity]),
