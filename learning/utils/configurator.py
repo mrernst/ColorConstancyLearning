@@ -198,7 +198,8 @@ def get_optimizer(model, args):
 # TODO: convert this into a Loss class with a method get_loss to avoid
 # reloading the dicts every time this function is called
 def convert_class_to_hue_angle(labels, n_classes=50):
-	hue_angle = labels/(n_classes - 1) * 2 * 3.14159
+	#hue_angle = labels/(n_classes - 1) * 2 * 3.14159
+	hue_angle = labels/n_classes * 2 * 3.14159
 	hue_angle = torch.stack([torch.sin(hue_angle), torch.cos(hue_angle)], dim=1)
 	#print(hue_angle.shape)
 	return hue_angle
