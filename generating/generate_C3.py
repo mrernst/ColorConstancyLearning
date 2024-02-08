@@ -93,6 +93,8 @@ def main(args):
             MIN_FRAMES = args.min_periodicity
             N_LIGHTS = args.n_lights
             OFFSET = 100
+            if args.temporal_sampling:
+                N_FRAMES = args.n_frames * 10
             
             for scene_id in range(args.n_cubes):
                 dict_of_lights = {}
@@ -135,7 +137,15 @@ def main(args):
                     y_stacked = np.concatenate(y_stacked)
                     c_stacked = np.concatenate(c_stacked)
                     
-                    dict_of_lights[light] = [x_stacked[OFFSET:N_FRAMES+OFFSET],y_stacked[OFFSET:N_FRAMES+OFFSET],c_stacked[OFFSET:N_FRAMES+OFFSET]]
+                    
+                    
+                    if args.temporal_sampling:
+                        # sample n_frames random indices without putting back
+                        random_indices = np.random.choice(len(x_stacked), args.n_frames, replace=False)
+                        dict_of_lights[light] = [x_stacked[random_indices],y_stacked[random_indices],c_stacked[random_indices]]
+                    else:
+                        dict_of_lights[light] = [x_stacked[OFFSET:N_FRAMES+OFFSET],y_stacked[OFFSET:N_FRAMES+OFFSET],c_stacked[OFFSET:N_FRAMES+OFFSET]]
+
                 
                 if args.plot:
                     ax[0].set_ylim(0, args.lights_max_power)
@@ -198,7 +208,7 @@ def main(args):
         pass
     
     # 4. execute blenderproc script from this script
-    #for scene_id in range(25,26,1): #range(args.n_cubes):
+    #for scene_id in range(12,13,1): #range(args.n_cubes):
     for scene_id in range(args.n_cubes):
         bashCommand = f"blenderproc run bproc_generator.py --scene_id {scene_id} --n_frames {args.n_frames} --n_lights {args.n_lights} --camera_resolution {args.camera_resolution} --camera_radius {args.camera_radius} --camera_height {args.camera_height} --render_samples {args.render_samples} --gif_frame_duration {args.gif_frame_duration}"
         os.system(bashCommand)
@@ -279,6 +289,10 @@ if __name__ == '__main__':
     parser.add_argument('--temporal', dest='temporal', action='store_true', help="Make a temporally consistent dataset")
     parser.add_argument('--no-temporal', dest='temporal', action='store_false')
     parser.set_defaults(temporal=True)
+    
+    parser.add_argument('--temporal_sampling', dest='temporal_sampling', action='store_true', help="Make a temporally consistent dataset")
+    parser.add_argument('--no-temporal_sampling', dest='temporal_sampling', action='store_false')
+    parser.set_defaults(temporal_sampling=False)
     
     parser.add_argument('--neutral_lights', dest='neutral_lights', action='store_true', help="Force all lights in the scene to be white")
     parser.add_argument('--no-neutral_lights', dest='neutral_lights', action='store_false')
