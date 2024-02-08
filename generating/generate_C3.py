@@ -94,7 +94,7 @@ def main(args):
             N_LIGHTS = args.n_lights
             OFFSET = 100
             if args.temporal_sampling:
-                N_FRAMES = args.n_frames * 10
+                N_FRAMES = args.n_frames * 100
             
             for scene_id in range(args.n_cubes):
                 dict_of_lights = {}
