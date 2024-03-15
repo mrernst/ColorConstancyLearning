@@ -5,7 +5,7 @@ import pickle
 import os.path as osp
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
-
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from learning.utils.datasets import SimpleTimeContrastiveDataset
@@ -48,7 +48,8 @@ def folder2lmdb(dpath, name="train_images", write_frequency=5000, num_workers=0)
         # print(type(data), data)
         image = data
         for i in range(len(labels)):
-            labels[i] = labels[i].numpy()
+            labels[i] = np.squeeze(labels[i].numpy())
+            #print(labels[i].shape)
         
         #label = label.numpy()
         #txn.put(u'{}'.format(idx).encode('ascii'), dump_pickle((image, label)))
