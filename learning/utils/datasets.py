@@ -14,7 +14,11 @@ import os, sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import warnings
 
+import io
+import pickle
+import lmdb
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils, datasets
@@ -375,12 +379,15 @@ class C3Dataset(TimeContrastiveDataset):
     
 
 # TODO: add a C3 neutral dataset that uses a simulated buffer again, just build the registry by copying all entries a number of times so we can compare with the regular dataset
+# INFO: TimeContrastiveDataset and the C3Dataset inherited is more powerful, but way slower than
+# everything below this point
+# -----
 
 
 
 
 class SimpleTimeContrastiveDataset(datasets.ImageFolder):
-    # TODO: Rewrite this class from the ground up. I want this to be way more pythonic and use a predefined dict instead of anything else that always gives out the same pair instead of sampling for simplicity and fastness sake. Inherit from ImageFolder directly
+    # TODO: want this to be way more pythonic and use a predefined dict instead of anything else that always gives out the same pair instead of sampling for simplicity and fastness sake. Inherit from ImageFolder directly
     def __init__(
         self,
         root,
@@ -390,9 +397,10 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
         transform = None,
         target_transform = None,
         is_valid_file = None,
+        **kwargs
     ) -> None:
     
-        super().__init__(root, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file)
+        super().__init__(root, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file, **kwargs)
         # samples needs to be sorted first and the rotation needs to happen per object
         self.contrastive = contrastive
         self.n_classes = len(self.classes)
@@ -480,7 +488,7 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
     
     @label_by.setter
     def label_by(self, l):
-        assert l in ['object', 'color', 'power', 'lighting']        
+        assert l in ['object', 'color', 'power', 'lighting', 'all']        
         self._label_by = l
         if l =='color':
             self.n_classes = 24 # not real classes but output nodes
@@ -497,6 +505,11 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
             self.classes = [f'{i}' for i in range(24)]
             # redo samples samples + 1 and samples - 1 ?
             self.samples = [(a, b) for a, b in zip([tup[0] for tup in self.samples], self.lighting_labels)]
+        elif l == 'all':
+            warnings.warn("Choosing the label_by all method is only suitable for converting the dataset to lmdb")
+            self.n_classes = 1
+            self.classes = [f'{i}' for i in range(1)]
+            self.samples = [(a, [b,c,d,e]) for a, b, c, d, e in zip([tup[0] for tup in self.samples], self.object_labels, self.color_labels, self.power_labels, self.lighting_labels)]
         else:
             self.n_classes = 50
             self.classes = [f'{i}' for i in range(50)]
@@ -554,6 +567,222 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
     def __len__(self) -> int:
         return len(self.samples)
 
+
+
+class ImageFolderLMDB(torch.utils.data.Dataset):
+    def __init__(self, db_path, transform=None, target_transform=None):
+        self.db_path = db_path
+        self.transform = transform
+        self.target_transform = target_transform
+        
+        env = lmdb.open(self.db_path, subdir=os.path.isdir(self.db_path),
+                        readonly=True, lock=False,
+                        readahead=False, meminit=False)
+        with env.begin(write=False) as txn:
+            self.length = pickle.loads(txn.get(b'__len__'))
+            self.keys = pickle.loads(txn.get(b'__keys__'))
+        
+    def open_lmdb(self):
+         self.env = lmdb.open(self.db_path, subdir=os.path.isdir(self.db_path),
+                              readonly=True, lock=False,
+                              readahead=False, meminit=False)
+         self.txn = self.env.begin(write=False, buffers=True)
+         self.length = pickle.loads(self.txn.get(b'__len__'))
+         self.keys = pickle.loads(self.txn.get(b'__keys__'))
+    
+    def __getitem__(self, index):
+        if not hasattr(self, 'txn'):
+            self.open_lmdb()
+        
+        img, target = None, None
+        byteflow = self.txn.get(self.keys[index])
+        unpacked = pickle.loads(byteflow)
+    
+        # load image
+        imgbuf = unpacked[0]
+        buf = io.BytesIO()
+        buf.write(imgbuf[0])
+        buf.seek(0)
+        img = Image.open(buf).convert('RGB')
+    
+        # load label
+        target = unpacked[1]
+    
+        if self.transform is not None:
+            img = self.transform(img)
+    
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+    
+        return img, target
+    
+    def __len__(self):
+        return self.length
+    
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' + self.db_path + ')'
+
+class SimpleTimeContrastiveDatasetLMDB(SimpleTimeContrastiveDataset):
+    """
+    SimpleTimeContrastiveDatasetLMDB is a variant of SimpleTimeContrastiveDataset
+    that uses the lmdb datastructure to enable fast dynamic loading for the cluster
+    and datasets that are defined in a single file instead of thousands of single pngs
+    """
+    #def __init__(self, root, transform=None, target_transform=None):
+    def __init__(
+        self,
+        root,
+        contrastive,
+        sampling_mode='randomwalk',
+        extensions = None,
+        transform = None,
+        target_transform = None,
+        is_valid_file = None,
+        **kwargs
+    ) -> None:
+        
+        super().__init__(root, contrastive, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file, **kwargs)
+        
+        self.contrastive = contrastive        
+        assert sampling_mode in ['randomwalk'], "Only random walk is implemented for the simple dataset structure"
+        
+        self.sampling_mode = sampling_mode
+        
+        self.label_by = 'object'
+        
+        
+        self.db_path = root + '.lmdb'
+        self.transform = transform
+        self.target_transform = target_transform
+        
+        env = lmdb.open(self.db_path, subdir=os.path.isdir(self.db_path),
+                        readonly=True, lock=False,
+                        readahead=False, meminit=False)
+        with env.begin(write=False) as txn:
+            self.length = pickle.loads(txn.get(b'__len__'))
+            self.keys = pickle.loads(txn.get(b'__keys__'))
+        
+        self.indices_shifted_plus_one =  list(np.arange(self.length)[1:]) + list(np.arange(self.length)[0:1])
+        self.indices_shifted_minus_one = list(np.arange(self.length)[-1:]) + list(np.arange(self.length)[:-1])
+        # on a per object basis one could also make a definite list  l[1:] + l[-2:-1]
+
+        
+    def open_lmdb(self):
+         self.env = lmdb.open(self.db_path, subdir=os.path.isdir(self.db_path),
+                              readonly=True, lock=False,
+                              readahead=False, meminit=False)
+         self.txn = self.env.begin(write=False, buffers=True)
+         self.length = pickle.loads(self.txn.get(b'__len__'))
+         self.keys = pickle.loads(self.txn.get(b'__keys__'))
+    
+    def get_single_item(self, index):
+        if not hasattr(self, 'txn'):
+            self.open_lmdb()
+        
+        img, target = None, None
+        byteflow = self.txn.get(self.keys[index])
+        unpacked = pickle.loads(byteflow)
+    
+        # load image
+        imgbuf = unpacked[0]
+        buf = io.BytesIO()
+        buf.write(imgbuf[0])
+        buf.seek(0)
+        img = Image.open(buf).convert('RGB')
+    
+        # load label
+        target = unpacked[1:] #get the whole labels here
+    
+        return img, target
+    
+    
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+        
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        sample, target = self.get_single_item(index)
+        
+        # if self.sampling_mode == 'uniform':
+        #     self._reshuffle_dataset()
+        
+        
+        if self.contrastive:
+            # get contrast and check whether it is okay iff we sample contrasts
+            # in this loop you extract the correct label defined by self.label_id
+            if np.random.random() > 0.5:
+                augmentation, target2 = self.get_single_item(self.indices_shifted_plus_one[index])
+                if target2[0] != target[0]:
+                   augmentation, target2 = self.get_single_item(self.indices_shifted_minus_one[index])
+            else:
+                augmentation, target2 = self.get_single_item(self.indices_shifted_minus_one[index])
+                if target2[0] != target[0]:
+                   augmentation, target2 = self.get_single_item(self.indices_shifted_plus_one[index])
+            
+            
+            if self.transform is not None:
+                sample = self.transform(sample)
+                augmentation = self.transform(augmentation)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+        
+            output = ([sample, augmentation], target[self.label_id])
+        else:
+            if self.transform is not None:
+                sample = self.transform(sample)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+            
+            output =  sample, target
+        
+        return output
+
+    
+    def __len__(self):
+        return self.length
+    
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' + self.db_path + ')'
+    
+    @property
+    def label_by(self):
+        return self._label_by
+    
+    @label_by.setter
+    def label_by(self, l):
+        assert l in ['object', 'color', 'power', 'lighting']        
+        self._label_by = l
+        if l =='color':
+            self.label_id = 1 # standard object labels   
+            self.n_classes = 24 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(24)]
+        elif l == 'power':
+            self.label_id = 2 # standard object labels
+            self.n_classes = 6 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(6)]
+        elif l == 'lighting':
+            self.label_id = 3 # standard object labels
+            self.n_classes = 24 # not real classes but output nodes
+            self.classes = [f'{i}' for i in range(24)]
+        else:
+            self.label_id = 0 # standard object labels
+            self.n_classes = 50
+            self.classes = [f'{i}' for i in range(50)]
+
+
+
+def FastTimeContrastiveDatasetWrapper(root, **kwargs):
+    # check whether an .lmdb file exists
+    lmdb_exists = os.path.exists(root+'.lmdb')
+    if lmdb_exists:
+        return SimpleTimeContrastiveDatasetLMDB(root, **kwargs)
+    else:
+        return SimpleTimeContrastiveDataset(root, **kwargs)
+
+
 # ----------------
 # main program
 # ----------------
@@ -561,18 +790,33 @@ class SimpleTimeContrastiveDataset(datasets.ImageFolder):
 if __name__ == "__main__":
     
     
+    dataset = FastTimeContrastiveDatasetWrapper(
+        root='data/C3/train',
+        transform=transforms.ToTensor(),
+        contrastive=True,
+    )
+    #dataset.label_by = "lighting"
+    
+    # dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
+    # starting_time = time.time()
+    # for ibatch, sample_batched in enumerate(dataloader):
+    #     print(ibatch, end='\r')
+    # ending_time = time.time()
+    # print(ending_time - starting_time)
     
     dataset = SimpleTimeContrastiveDataset(
         root='data/C3/train',
         transform=transforms.ToTensor(),
         contrastive=True,
     )
+    dataset.label_by = "lighting"
+
     
-    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
     for ibatch, sample_batched in enumerate(dataloader):
-        #print(ibatch)
+        print(ibatch)
         #print(sample_batched[0][0].shape)
-    
+        print(sample_batched[1][0])
         show_batch(sample_batched)
         if ibatch == 4:
             break
