@@ -641,7 +641,7 @@ class SimpleTimeContrastiveDatasetLMDB(SimpleTimeContrastiveDataset):
         **kwargs
     ) -> None:
         
-        super().__init__(root, contrastive, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file, **kwargs)
+        #super().__init__(root, contrastive, transform=transform, target_transform=target_transform, is_valid_file=is_valid_file, **kwargs)
         
         self.contrastive = contrastive        
         assert sampling_mode in ['randomwalk'], "Only random walk is implemented for the simple dataset structure"
