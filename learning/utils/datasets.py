@@ -722,15 +722,19 @@ class SimpleTimeContrastiveDatasetLMDB(SimpleTimeContrastiveDataset):
                 if target2[0] != target[0]:
                    augmentation, target2 = self.get_single_item(self.indices_shifted_plus_one[index])
             
+            target = target[self.label_id]
             
             if self.transform is not None:
                 sample = self.transform(sample)
                 augmentation = self.transform(augmentation)
             if self.target_transform is not None:
                 target = self.target_transform(target)
-        
-            output = ([sample, augmentation], target[self.label_id])
+            
+            output = ([sample, augmentation], target)
         else:
+            
+            target = target[self.label_id]
+
             if self.transform is not None:
                 sample = self.transform(sample)
             if self.target_transform is not None:
@@ -795,22 +799,30 @@ if __name__ == "__main__":
         transform=transforms.ToTensor(),
         contrastive=True,
     )
-    #dataset.label_by = "lighting"
-    
-    # dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
-    # starting_time = time.time()
-    # for ibatch, sample_batched in enumerate(dataloader):
-    #     print(ibatch, end='\r')
-    # ending_time = time.time()
-    # print(ending_time - starting_time)
+        
+    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
+    starting_time = time.time()
+    for ibatch, sample_batched in enumerate(dataloader):
+        print(ibatch, end='\r')
+        #print(sample_batched[1].shape)
+    ending_time = time.time()
+    print(ending_time - starting_time)
     
     dataset = SimpleTimeContrastiveDataset(
         root='data/C3/train',
         transform=transforms.ToTensor(),
         contrastive=True,
     )
-    dataset.label_by = "lighting"
-
+    
+    dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
+    starting_time = time.time()
+    for ibatch, sample_batched in enumerate(dataloader):
+        print(ibatch, end='\r')
+        #print(sample_batched[1].shape)
+    ending_time = time.time()
+    print(ending_time - starting_time)
+    
+    sys.exit()
     
     dataloader = DataLoader(dataset, batch_size=100, num_workers=0, shuffle=True)
     for ibatch, sample_batched in enumerate(dataloader):

@@ -20,7 +20,7 @@ from torchvision.transforms import v2
 from utils.general import TwoContrastTransform, DotDict
 from utils.losses import RELIC_Loss, VICReg_Loss, SimCLR_Loss, Decorrelation_Loss
 from utils.networks import ResNet18, LeNet5, AlexNet, MLPHead
-from utils.datasets import SimpleTimeContrastiveDataset
+from utils.datasets import SimpleTimeContrastiveDataset, SimpleTimeContrastiveDatasetLMDB, FastTimeContrastiveDatasetWrapper
 
 
 
@@ -129,7 +129,7 @@ def get_dataloaders(args, data_properties_dict):
 	
 	train_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
 	print(f"[INFO:] Training set at '{train_root}'")
-	dataset_train = SimpleTimeContrastiveDataset(
+	dataset_train = FastTimeContrastiveDatasetWrapper(
 		root=train_root,
 		transform=train_transform,
 		contrastive=True if (args.contrast == 'time' or
@@ -145,7 +145,7 @@ def get_dataloaders(args, data_properties_dict):
 	else:
 		train_eval_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.train_split}' if args.train_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.train_split}'
 	print(f"[INFO:] Evaluation Training set at '{train_eval_root}'")
-	dataset_train_eval = SimpleTimeContrastiveDataset(
+	dataset_train_eval = FastTimeContrastiveDatasetWrapper(
 		root=train_eval_root,
 		transform=val_transform,
 		contrastive=False
@@ -157,7 +157,7 @@ def get_dataloaders(args, data_properties_dict):
 	
 	test_root = os.path.expanduser(args.data_root) + f'/{args.dataset}{args.test_split}' if args.test_split[0] == '_' else os.path.expanduser(args.data_root) + f'/{args.dataset}/{args.test_split}'
 	print(f"[INFO:] Test set at '{test_root}'")
-	dataset_test = SimpleTimeContrastiveDataset(
+	dataset_test = FastTimeContrastiveDatasetWrapper(
 		root=test_root,
 		transform=test_transform,
 		contrastive=False
