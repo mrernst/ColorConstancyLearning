@@ -1,4 +1,4 @@
-# Towards Self-Supervised Learning of Color Constancy
+# Self-Supervised Learning of Color Constancy
 
 <p align="center">
   <img src="https://github.com/mrernst/ColorConstancyLearning/blob/main/img/header.png" width="500">
