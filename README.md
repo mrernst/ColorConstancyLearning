@@ -14,7 +14,7 @@ A preprint of the paper can also be found at [arxiv](https://arxiv.org/abs/2404.
  Clone the repository from here
 * Make sure you have all the dependencies installed, see also requirements.txt
 * Generate the corresponding color-constancy dataset using Blender and [BlenderProc]()
-* Start an experiment on your local machine with the experiments provided at main/experimentX.sh
+* Start an experiment on your local machine or on your ML cluster
 
 
 ### Prerequisites
