@@ -80,10 +80,6 @@ python3 main/train.py \
 
 ```
 
-#### Run the experiments of the paper
-
-There are several slurm sbatch scripts to run exactly the runs that are presented in the ICDL contribution. These scripts can be found under ./learning/experiments.
-Execute one of the scripts script to start a batch job using the slurm job manager that includes all runs presented in a specific Figure or Table,
 
 
 ## License
